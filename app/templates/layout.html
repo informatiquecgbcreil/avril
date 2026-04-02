@@ -240,6 +240,45 @@
       background: color-mix(in srgb, var(--surface) 86%, transparent);
     }
     .ux-tooltip-trigger:focus{ outline:2px solid var(--focus); outline-offset:2px; }
+
+    .context-banner{
+      border:1px solid var(--border-soft);
+      border-radius:14px;
+      padding:10px 12px;
+      background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      margin-bottom:12px;
+    }
+    .context-badge{
+      border:1px solid var(--border-soft);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      color: var(--text);
+    }
+    .context-badge strong{ font-weight:800; }
+    .breadcrumb{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:6px;
+      margin-bottom:10px;
+      color: var(--muted);
+      font-size:13px;
+    }
+    .breadcrumb__item{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .breadcrumb__sep{
+      opacity:.7;
+      font-size:11px;
+    }
   </style>
   {% block head_extra %}{% endblock %}
 </head>
@@ -408,6 +447,77 @@
         <div class="spacer"></div>
       {% endif %}
     {% endwith %}
+
+    {% if current_user.is_authenticated %}
+      {% set endpoint_module = (ep.split('.', 1)[0] if '.' in ep else ep) %}
+      {% set module_labels = {
+        'main': 'Pilotage',
+        'budget': 'Finance',
+        'projets': 'Projets',
+        'participants': 'Participants',
+        'activite': 'Activité',
+        'kiosk': 'Kiosque',
+        'statsimpact': 'Données ateliers',
+        'pedagogie': 'Pédagogie',
+        'bilans': 'Bilans',
+        'inventaire': 'Inventaire factures',
+        'inventaire_materiel': 'Inventaire matériel',
+        'quartiers': 'Quartiers',
+        'partenaires': 'Partenaires',
+        'questionnaires': 'Questionnaires',
+        'admin': 'Administration',
+        'auth': 'Connexion',
+        'setup': 'Initialisation',
+        'launcher': 'Portail'
+      } %}
+      {% set perm_hints = {
+        'main': 'dashboard:view',
+        'budget': 'depenses:view',
+        'projets': 'projets:view',
+        'participants': 'participants:view',
+        'activite': 'emargement:view',
+        'kiosk': 'emargement:view',
+        'statsimpact': 'statsimpact:view',
+        'pedagogie': 'pedagogie:view',
+        'bilans': 'bilans:view',
+        'inventaire': 'inventaire:view',
+        'inventaire_materiel': 'inventaire:view',
+        'quartiers': 'quartiers:view',
+        'partenaires': 'partenaires:view',
+        'questionnaires': 'questionnaires:view',
+        'admin': 'admin:users'
+      } %}
+      {% set role_code = (current_user.role_codes[0] if current_user.role_codes else '') %}
+      {% set role_labels = {
+        'direction': 'Direction',
+        'directrice': 'Direction',
+        'finance': 'Finance',
+        'admin_tech': 'Admin technique',
+        'responsable_secteur': 'Responsable secteur'
+      } %}
+
+      <nav class="breadcrumb" aria-label="Fil d’Ariane">
+        <span class="breadcrumb__item">Accueil</span>
+        <span class="breadcrumb__sep">›</span>
+        <span class="breadcrumb__item">{{ module_labels.get(endpoint_module, endpoint_module|capitalize) }}</span>
+        {% if '.' in ep %}
+          {% set endpoint_action = ep.split('.', 1)[1] %}
+          {% if endpoint_action %}
+            <span class="breadcrumb__sep">›</span>
+            <span class="breadcrumb__item">{{ endpoint_action.replace('_', ' ')|capitalize }}</span>
+          {% endif %}
+        {% endif %}
+      </nav>
+
+      <section class="context-banner" aria-label="Contexte de visibilité">
+        <span class="context-badge"><strong>Rôle</strong> · {{ role_labels.get(role_code, role_code or 'Utilisateur') }}</span>
+        <span class="context-badge"><strong>Portée</strong> · {% if can('scope:all_secteurs') %}Tous secteurs{% else %}{{ current_user.secteur_assigne or 'Secteur non défini' }}{% endif %}</span>
+        {% set hint = perm_hints.get(endpoint_module) %}
+        {% if hint %}
+          <span class="context-badge"><strong>Pourquoi je vois ça</strong> · permission {{ hint }}</span>
+        {% endif %}
+      </section>
+    {% endif %}
 
     {% block body %}{% endblock %}
   </div>
