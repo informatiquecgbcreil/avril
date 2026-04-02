@@ -69,6 +69,12 @@ CSV_FIELD_GROUPS = [
             {"key": "participant_genre", "label": "Genre"},
             {"key": "participant_type_public", "label": "Type public"},
             {"key": "participant_date_naissance", "label": "Date naissance"},
+            {"key": "participant_pays_origine", "label": "Pays d'origine"},
+            {"key": "participant_titre_sejour_type", "label": "Titre de séjour (type)"},
+            {"key": "participant_date_entree_dispositif", "label": "Date entrée dispositif"},
+            {"key": "participant_date_sortie_dispositif", "label": "Date sortie dispositif"},
+            {"key": "participant_diplome_obtenu", "label": "Diplôme obtenu"},
+            {"key": "participant_cir_obtenu", "label": "CIR obtenu"},
         ],
     },
     {
@@ -138,6 +144,25 @@ CSV_FIELD_MAP = {
         "label": "Date naissance",
         "getter": lambda ctx: _fmt_date(ctx["participant"].date_naissance),
     },
+    "participant_pays_origine": {"label": "Pays d'origine", "getter": lambda ctx: ctx["participant"].pays_origine or ""},
+    "participant_titre_sejour_type": {"label": "Titre de séjour (type)", "getter": lambda ctx: ctx["participant"].titre_sejour_type or ""},
+    "participant_date_entree_dispositif": {
+        "label": "Date entrée dispositif",
+        "getter": lambda ctx: _fmt_date(ctx["participant"].date_entree_dispositif),
+    },
+    "participant_date_sortie_dispositif": {
+        "label": "Date sortie dispositif",
+        "getter": lambda ctx: _fmt_date(ctx["participant"].date_sortie_dispositif),
+    },
+    "participant_diplome_obtenu": {"label": "Diplôme obtenu", "getter": lambda ctx: ctx["participant"].diplome_obtenu or ""},
+    "participant_cir_obtenu": {
+        "label": "CIR obtenu",
+        "getter": lambda ctx: (
+            "Oui"
+            if ctx["participant"].cir_obtenu is True
+            else ("Non" if ctx["participant"].cir_obtenu is False else "")
+        ),
+    },
     "session_id": {"label": "ID session", "getter": lambda ctx: ctx["session"].id},
     "session_date": {
         "label": "Date session",
@@ -169,6 +194,31 @@ CSV_FIELD_MAP = {
         "getter": lambda ctx: _fmt_datetime(ctx["presence"].created_at),
     },
 }
+
+SENSITIVE_INSERTION_FIELDS = {
+    "participant_pays_origine",
+    "participant_titre_sejour_type",
+    "participant_date_entree_dispositif",
+    "participant_date_sortie_dispositif",
+    "participant_diplome_obtenu",
+    "participant_cir_obtenu",
+}
+
+
+def _csv_fields_for_current_user() -> tuple[list[dict], list[str], set[str]]:
+    can_sensitive = can("insertion:sensitive_view") and can("statsimpact:insertion_export")
+    allowed_fields = set(CSV_FIELD_MAP.keys())
+    if not can_sensitive:
+        allowed_fields -= SENSITIVE_INSERTION_FIELDS
+
+    groups: list[dict] = []
+    for group in CSV_FIELD_GROUPS:
+        filtered = [f for f in group["fields"] if f["key"] in allowed_fields]
+        if filtered:
+            groups.append({"label": group["label"], "fields": filtered})
+
+    defaults = [f for f in CSV_DEFAULT_FIELDS if f in allowed_fields]
+    return groups, defaults, allowed_fields
 
 
 def _can_view() -> bool:
@@ -731,13 +781,14 @@ def exports():
         q = q.filter(AtelierActivite.secteur == flt.secteur)
     ateliers = q.order_by(AtelierActivite.secteur.asc(), AtelierActivite.nom.asc()).all()
 
+    csv_groups, csv_defaults, _ = _csv_fields_for_current_user()
     return render_template(
         "statsimpact/exports.html",
         flt=flt,
         secteurs=secteurs,
         ateliers=ateliers,
-        csv_field_groups=CSV_FIELD_GROUPS,
-        csv_default_fields=CSV_DEFAULT_FIELDS,
+        csv_field_groups=csv_groups,
+        csv_default_fields=csv_defaults,
     )
 
 @bp.route("/stats-impact/", methods=["GET"])
@@ -1116,6 +1167,7 @@ def dashboard():
         except Exception:
             compare = {"enabled": False}
 
+    csv_groups, csv_defaults, _ = _csv_fields_for_current_user()
     return render_template(
         ["statsimpact/dashboard.html", "statsimpact_dashboard.html"],
         flt=flt,
@@ -1132,8 +1184,8 @@ def dashboard():
         available_years=years,
         charts=charts,
         compare=compare,
-        csv_field_groups=CSV_FIELD_GROUPS,
-        csv_default_fields=CSV_DEFAULT_FIELDS,
+        csv_field_groups=csv_groups,
+        csv_default_fields=csv_defaults,
     )
 
 
@@ -1147,12 +1199,14 @@ def magatomatique_export_csv():
     flt = normalize_filters(request.args, user=current_user)
     participant_q = (request.args.get("participant_q") or "").strip() or None
 
+    _csv_groups, csv_defaults, allowed_fields = _csv_fields_for_current_user()
+
     fields = request.args.getlist("fields")
     if not fields:
-        fields = list(CSV_DEFAULT_FIELDS)
-    fields = [f for f in fields if f in CSV_FIELD_MAP]
+        fields = list(csv_defaults)
+    fields = [f for f in fields if f in CSV_FIELD_MAP and f in allowed_fields]
     if not fields:
-        fields = list(CSV_DEFAULT_FIELDS)
+        fields = list(csv_defaults) if csv_defaults else [f for f in CSV_DEFAULT_FIELDS if f in allowed_fields]
 
     query = _query_presence_export(flt, participant_q=participant_q)
 
