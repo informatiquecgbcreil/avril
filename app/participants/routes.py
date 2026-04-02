@@ -33,6 +33,14 @@ def _can_edit_participant(p: Participant) -> bool:
     return bool(can('participants:edit'))
 
 
+def _can_view_sensitive_insertion() -> bool:
+    return bool(can("insertion:sensitive_view"))
+
+
+def _can_edit_insertion() -> bool:
+    return bool(can("insertion:edit"))
+
+
 def _can_see_participant(p: Participant) -> bool:
     # Visible (ancienne logique) : créé par secteur OU déjà présent dans secteur
     # Utilisé uniquement pour les listings "dans mon secteur", PAS pour l'édition.
@@ -61,6 +69,15 @@ def _parse_iso_date(raw: str | None) -> date | None:
         return date.fromisoformat(value) if value else None
     except Exception:
         return None
+
+
+def _parse_bool(raw: str | None) -> bool | None:
+    value = (raw or "").strip().lower()
+    if value in {"1", "true", "on", "oui", "yes"}:
+        return True
+    if value in {"0", "false", "off", "non", "no"}:
+        return False
+    return None
 
 
 def _normalize_gender_group(value: str | None) -> str:
@@ -452,6 +469,14 @@ def new_participant():
             except Exception:
                 pass
 
+        if _can_edit_insertion():
+            p.pays_origine = (request.form.get("pays_origine") or "").strip() or None
+            p.titre_sejour_type = (request.form.get("titre_sejour_type") or "").strip() or None
+            p.diplome_obtenu = (request.form.get("diplome_obtenu") or "").strip() or None
+            p.cir_obtenu = _parse_bool(request.form.get("cir_obtenu"))
+            p.date_entree_dispositif = _parse_iso_date(request.form.get("date_entree_dispositif"))
+            p.date_sortie_dispositif = _parse_iso_date(request.form.get("date_sortie_dispositif"))
+
         db.session.add(p)
         db.session.commit()
         flash("Le participant a bien été créé.", "ok")
@@ -463,6 +488,8 @@ def new_participant():
         item=None,
         secteur=_current_secteur(),
         is_editable=True,
+        can_view_sensitive_insertion=_can_view_sensitive_insertion(),
+        can_edit_insertion=_can_edit_insertion(),
         quartiers=quartiers,
     )
 
@@ -505,6 +532,14 @@ def edit_participant(participant_id: int):
         else:
             p.date_naissance = None
 
+        if _can_edit_insertion():
+            p.pays_origine = (request.form.get("pays_origine") or "").strip() or None
+            p.titre_sejour_type = (request.form.get("titre_sejour_type") or "").strip() or None
+            p.diplome_obtenu = (request.form.get("diplome_obtenu") or "").strip() or None
+            p.cir_obtenu = _parse_bool(request.form.get("cir_obtenu"))
+            p.date_entree_dispositif = _parse_iso_date(request.form.get("date_entree_dispositif"))
+            p.date_sortie_dispositif = _parse_iso_date(request.form.get("date_sortie_dispositif"))
+
         # finance/directrice peuvent requalifier created_secteur
         if _is_global_role():
             p.created_secteur = (request.form.get("created_secteur") or "").strip() or None
@@ -519,6 +554,8 @@ def edit_participant(participant_id: int):
         item=p,
         secteur=_current_secteur(),
         is_editable=is_editable,
+        can_view_sensitive_insertion=_can_view_sensitive_insertion(),
+        can_edit_insertion=_can_edit_insertion(),
         quartiers=quartiers,
     )
 
@@ -539,6 +576,12 @@ def anonymize_participant(participant_id: int):
     p.ville = None
     p.email = None
     p.telephone = None
+    p.pays_origine = None
+    p.titre_sejour_type = None
+    p.diplome_obtenu = None
+    p.cir_obtenu = None
+    p.date_entree_dispositif = None
+    p.date_sortie_dispositif = None
 
     strict = (request.form.get("strict") or "").strip() == "1"
     if strict and _is_global_role():

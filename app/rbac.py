@@ -68,6 +68,9 @@ DEFAULT_PERMS: list[tuple[str, str]] = [
     ("participants:edit", "Créer / modifier un participant"),
     ("participants:delete", "Supprimer un participant"),
     ("participants:anonymize", "Anonymiser un participant"),
+    ("insertion:view", "Voir les données d’insertion"),
+    ("insertion:edit", "Modifier les données d’insertion"),
+    ("insertion:sensitive_view", "Voir les données sensibles d’insertion"),
 
     # Quartiers
     ("quartiers:view", "Voir les quartiers"),
@@ -98,6 +101,7 @@ DEFAULT_PERMS: list[tuple[str, str]] = [
     ("stats:view_all", "Voir les statistiques (tous secteurs)"),
     ("statsimpact:view", "Voir les stats impact (secteur)"),
     ("statsimpact:view_all", "Voir les stats impact (tous secteurs)"),
+    ("statsimpact:insertion_export", "Exporter les stats insertion nominatives"),
     ("bilans:view", "Voir les bilans"),
 
     # Contrôle / activité / admin
@@ -149,6 +153,26 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
         "perms": [p for (p, _) in DEFAULT_PERMS],
     },
 
+    # Référent insertion professionnelle et sociale
+    # Portée sectorielle par défaut (pas de scope:all_secteurs).
+    "conseiller_insertion": {
+        "perms": [
+            "dashboard:view",
+            "participants:view_all",
+            "participants:edit",
+            "emargement:view",
+            "emargement:edit",
+            "ateliers:view",
+            "statsimpact:view",
+            "questionnaires:view",
+            "questionnaires:respond",
+            "insertion:view",
+            "insertion:edit",
+            "insertion:sensitive_view",
+            "statsimpact:insertion_export",
+        ],
+    },
+
     # Responsable secteur: "presque direction" MAIS borné au secteur (contrôlé dans les routes)
     # Exception demandée: peut voir les participants de tous secteurs, mais ne peut modifier/supprimer
     # que ceux "de son secteur" (contrôle déjà géré via created_secteur / _can_edit_participant).
@@ -180,6 +204,7 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
 
             # Participants: vue globale, mais edit/delete bornés au secteur via _can_edit_participant
             "participants:view_all", "participants:edit", "participants:delete", "participants:anonymize",
+            "insertion:view",
 
             # Quartiers (lecture seule)
             "quartiers:view",
@@ -205,6 +230,8 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
 
 def _category_from_code(code: str) -> str:
     """Retourne une catégorie lisible depuis un code 'module:action'."""
+    if code.startswith("statsimpact:insertion_"):
+        return "Insertion"
     module = (code.split(":", 1)[0] if ":" in code else code).strip()
     mapping = {
         "dashboard": "Dashboard",
@@ -213,6 +240,7 @@ def _category_from_code(code: str) -> str:
         "depenses": "Dépenses",
         "projets": "Projets",
         "participants": "Participants",
+        "insertion": "Insertion",
         "quartiers": "Quartiers",
         "partenaires": "Partenaires",
         "questionnaires": "Questionnaires",
