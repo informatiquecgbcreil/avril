@@ -913,6 +913,12 @@ class Participant(db.Model):
     telephone = db.Column(db.String(60), nullable=True)
     genre = db.Column(db.String(20), nullable=True)
     date_naissance = db.Column(db.Date, nullable=True)
+    pays_origine = db.Column(db.String(120), nullable=True)
+    titre_sejour_type = db.Column(db.String(120), nullable=True)
+    date_entree_dispositif = db.Column(db.Date, nullable=True)
+    date_sortie_dispositif = db.Column(db.Date, nullable=True)
+    diplome_obtenu = db.Column(db.String(180), nullable=True)
+    cir_obtenu = db.Column(db.Boolean, nullable=True)
 
     # Type de public (ex: H/S/B/A/P). Par défaut: H
     type_public = db.Column(db.String(2), nullable=False, default="H")
@@ -1104,6 +1110,9 @@ class PresenceActivite(db.Model):
     # Motif (liste + autre)
     motif = db.Column(db.String(180), nullable=True)
     motif_autre = db.Column(db.String(255), nullable=True)
+    dispositif_type = db.Column(db.String(120), nullable=True)
+    accompagnant_nom = db.Column(db.String(180), nullable=True)
+    accompagnant_type = db.Column(db.String(30), nullable=True)
 
     # signature: stockée en fichier (temp), ici juste le chemin
     signature_path = db.Column(db.String(255), nullable=True)

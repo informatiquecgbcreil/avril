@@ -68,6 +68,9 @@ DEFAULT_PERMS: list[tuple[str, str]] = [
     ("participants:edit", "Créer / modifier un participant"),
     ("participants:delete", "Supprimer un participant"),
     ("participants:anonymize", "Anonymiser un participant"),
+    ("insertion:view", "Voir les données d’insertion"),
+    ("insertion:edit", "Modifier les données d’insertion"),
+    ("insertion:sensitive_view", "Voir les données sensibles d’insertion"),
 
     # Quartiers
     ("quartiers:view", "Voir les quartiers"),
@@ -98,6 +101,7 @@ DEFAULT_PERMS: list[tuple[str, str]] = [
     ("stats:view_all", "Voir les statistiques (tous secteurs)"),
     ("statsimpact:view", "Voir les stats impact (secteur)"),
     ("statsimpact:view_all", "Voir les stats impact (tous secteurs)"),
+    ("statsimpact:insertion_export", "Exporter les stats insertion nominatives"),
     ("bilans:view", "Voir les bilans"),
 
     # Contrôle / activité / admin
@@ -180,6 +184,7 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
 
             # Participants: vue globale, mais edit/delete bornés au secteur via _can_edit_participant
             "participants:view_all", "participants:edit", "participants:delete", "participants:anonymize",
+            "insertion:view",
 
             # Quartiers (lecture seule)
             "quartiers:view",
@@ -213,6 +218,7 @@ def _category_from_code(code: str) -> str:
         "depenses": "Dépenses",
         "projets": "Projets",
         "participants": "Participants",
+        "insertion": "Insertion",
         "quartiers": "Quartiers",
         "partenaires": "Partenaires",
         "questionnaires": "Questionnaires",

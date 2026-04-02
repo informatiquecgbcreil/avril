@@ -206,6 +206,22 @@
             </select>
             <input class="in" type="text" name="motif_autre" placeholder="Si nécessaire, précisez le motif" style="margin-top:8px;">
           </div>
+
+          {% if can_insertion %}
+          <div>
+            <label>Type de dispositif</label>
+            <input class="in" type="text" name="dispositif_type" placeholder="Ex: IAE, FLE, CEJ..." {% if not can_edit_insertion %}disabled{% endif %}>
+          </div>
+          <div>
+            <label>Accompagnant</label>
+            <input class="in" type="text" name="accompagnant_nom" placeholder="Nom du bénévole/salarié" {% if not can_edit_insertion %}disabled{% endif %}>
+            <select class="in" name="accompagnant_type" style="margin-top:8px;" {% if not can_edit_insertion %}disabled{% endif %}>
+              <option value="">Type accompagnant</option>
+              <option value="benevole">Bénévole</option>
+              <option value="salarie">Salarié</option>
+            </select>
+          </div>
+          {% endif %}
         </div>
 
         <div class="spacer"></div>
@@ -246,6 +262,7 @@
               </th>
               <th>Participant</th>
               <th>Motif</th>
+              {% if can_insertion %}<th>Dispositif / accompagnant</th>{% endif %}
               <th>Signature</th>
               <th>Horodatage</th>
               <th>Évaluation</th>
@@ -266,6 +283,16 @@
                   {{ pr.motif or '' }}
                   {% if pr.motif_autre %}<br><span class="muted">{{ pr.motif_autre }}</span>{% endif %}
                 </td>
+                {% if can_insertion %}
+                <td>
+                  {{ pr.dispositif_type or '—' }}
+                  <br>
+                  <span class="muted">
+                    {{ pr.accompagnant_nom or '—' }}
+                    {% if pr.accompagnant_type %} · {{ pr.accompagnant_type|capitalize }}{% endif %}
+                  </span>
+                </td>
+                {% endif %}
                 <td>
                   {% if pr.signature_path %}<span class="muted">OK</span>{% else %}<span class="muted">—</span>{% endif %}
                 </td>
@@ -286,7 +313,7 @@
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="6" class="muted">Aucune présence n'a encore été enregistrée.</td></tr>
+              <tr><td colspan="{% if can_insertion %}7{% else %}6{% endif %}" class="muted">Aucune présence n'a encore été enregistrée.</td></tr>
             {% endfor %}
           </tbody>
         </table>

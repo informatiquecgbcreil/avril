@@ -1393,6 +1393,10 @@ def emargement(session_id: int):
             participant_id = request.form.get("participant_id")
             motif = request.form.get("motif") or None
             motif_autre = (request.form.get("motif_autre") or "").strip() or None
+            can_insertion = current_user.has_perm("insertion:edit")
+            dispositif_type = (request.form.get("dispositif_type") or "").strip() or None if can_insertion else None
+            accompagnant_nom = (request.form.get("accompagnant_nom") or "").strip() or None if can_insertion else None
+            accompagnant_type = (request.form.get("accompagnant_type") or "").strip() or None if can_insertion else None
             signature_data = request.form.get("signature_data")
 
             if not participant_id:
@@ -1422,6 +1426,9 @@ def emargement(session_id: int):
                 if pr:
                     pr.motif = motif
                     pr.motif_autre = motif_autre
+                    pr.dispositif_type = dispositif_type
+                    pr.accompagnant_nom = accompagnant_nom
+                    pr.accompagnant_type = accompagnant_type
                     if sig_path:
                         pr.signature_path = sig_path
                 else:
@@ -1430,6 +1437,9 @@ def emargement(session_id: int):
                         participant_id=participant.id,
                         motif=motif,
                         motif_autre=motif_autre,
+                        dispositif_type=dispositif_type,
+                        accompagnant_nom=accompagnant_nom,
+                        accompagnant_type=accompagnant_type,
                         signature_path=sig_path,
                     )
                     db.session.add(pr)
@@ -1518,6 +1528,8 @@ def emargement(session_id: int):
         modules_available=modules_available,
         current_module_ids=current_module_ids,
         schedule_edits=schedule_edits,
+        can_insertion=current_user.has_perm("insertion:view"),
+        can_edit_insertion=current_user.has_perm("insertion:edit"),
     )
 
 
