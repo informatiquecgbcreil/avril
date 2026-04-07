@@ -75,6 +75,19 @@
 
   <section class="section-card">
     {{ ux.callout("Flux conseillé", "Commencez par enregistrer les présences, puis utilisez l'évaluation individuelle ou l'évaluation groupée selon le niveau de détail attendu. Les liens de kiosque sont utiles lorsque les participants signent eux-mêmes sur un poste dédié.") }}
+    {% set has_presences = presences and presences|length > 0 %}
+    {% set has_competences = session_competences and session_competences|length > 0 %}
+    <div class="inline-actions" style="margin-top:10px; gap:8px; flex-wrap:wrap;">
+      <span class="status-badge {{ 'status-success' if session.kiosk_open else 'status-warning' }}">
+        1) Kiosque {{ 'terminé' if session.kiosk_open else 'à faire' }}
+      </span>
+      <span class="status-badge {{ 'status-success' if has_presences else 'status-warning' }}">
+        2) Présences {{ 'terminé' if has_presences else 'à faire' }}
+      </span>
+      <span class="status-badge {{ 'status-success' if (has_presences and has_competences) else 'status-warning' }}">
+        3) Évaluation / clôture {{ 'prête' if (has_presences and has_competences) else 'à préparer' }}
+      </span>
+    </div>
   </section>
 
   {% if session.session_type == 'COLLECTIF' %}
