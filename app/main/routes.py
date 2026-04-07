@@ -61,7 +61,20 @@ from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
 
 from app.extensions import db
-from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
+from app.models import (
+    Subvention,
+    LigneBudget,
+    Depense,
+    Projet,
+    SubventionProjet,
+    AtelierActivite,
+    SessionActivite,
+    PresenceActivite,
+    ProjetAtelier,
+    ProjetIndicateur,
+    Participant,
+    Partenaire,
+)
 from app.services.dashboard_service import build_dashboard_context
 
 bp = Blueprint("main", __name__)
@@ -638,6 +651,131 @@ def api_lignes(subvention_id):
         })
 
     return jsonify({"lignes": out})
+
+
+@bp.route("/api/global-search")
+@login_required
+def api_global_search():
+    term = (request.args.get("q") or "").strip()
+    if len(term) < 2:
+        return jsonify({"results": [], "query": term})
+
+    limit = 5
+    tokens = [tok.strip().lower() for tok in term.split() if tok.strip()]
+    if not tokens:
+        return jsonify({"results": [], "query": term})
+
+    has_global_scope = can("scope:all_secteurs")
+    user_secteur = (getattr(current_user, "secteur_assigne", "") or "").strip()
+    results = []
+
+    def _all_tokens_filter(*columns):
+        clauses = []
+        for token in tokens:
+            like_token = f"%{token}%"
+            per_token = [db.func.lower(db.func.coalesce(col, "")).like(like_token) for col in columns]
+            clauses.append(db.or_(*per_token))
+        return db.and_(*clauses)
+
+    if can("participants:view") or can("participants:view_all"):
+        participants_q = Participant.query.filter(
+            _all_tokens_filter(
+                Participant.nom,
+                Participant.prenom,
+                Participant.email,
+                Participant.telephone,
+                Participant.ville,
+            )
+        )
+        if not has_global_scope and user_secteur:
+            has_presence_in_user_secteur = (
+                db.session.query(PresenceActivite.id)
+                .join(SessionActivite, SessionActivite.id == PresenceActivite.session_id)
+                .filter(PresenceActivite.participant_id == Participant.id)
+                .filter(SessionActivite.secteur == user_secteur)
+                .exists()
+            )
+            participants_q = participants_q.filter(
+                db.or_(
+                    Participant.created_secteur == user_secteur,
+                    has_presence_in_user_secteur,
+                )
+            )
+        rows = participants_q.order_by(Participant.nom.asc(), Participant.prenom.asc()).limit(limit).all()
+        for row in rows:
+            results.append({
+                "type": "Participant",
+                "label": f"{(row.prenom or '').strip()} {(row.nom or '').strip()}".strip() or f"Participant #{row.id}",
+                "meta": row.ville or row.email or "Fiche participant",
+                "url": url_for("participants.edit_participant", participant_id=row.id),
+            })
+
+    if can("projets:view"):
+        projets_q = Projet.query.filter(
+            _all_tokens_filter(Projet.nom, Projet.description, Projet.secteur)
+        )
+        if not has_global_scope and user_secteur:
+            projets_q = projets_q.filter(Projet.secteur == user_secteur)
+        rows = projets_q.order_by(Projet.nom.asc()).limit(limit).all()
+        for row in rows:
+            results.append({
+                "type": "Projet",
+                "label": row.nom,
+                "meta": row.secteur or "",
+                "url": url_for("projets.projets_edit", projet_id=row.id),
+            })
+
+    if can("subventions:view"):
+        subventions_q = Subvention.query.filter(
+            Subvention.est_archive.is_(False),
+            _all_tokens_filter(Subvention.nom, Subvention.secteur)
+        )
+        if not has_global_scope and user_secteur:
+            subventions_q = subventions_q.filter(Subvention.secteur == user_secteur)
+        rows = subventions_q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).limit(limit).all()
+        for row in rows:
+            results.append({
+                "type": "Subvention",
+                "label": row.nom,
+                "meta": f"{row.secteur} · {row.annee_exercice}",
+                "url": url_for("main.subvention_pilotage", subvention_id=row.id),
+            })
+
+    if can("emargement:view"):
+        ateliers_q = AtelierActivite.query.filter(
+            AtelierActivite.is_deleted.is_(False),
+            _all_tokens_filter(AtelierActivite.nom, AtelierActivite.description, AtelierActivite.secteur)
+        )
+        if not has_global_scope and user_secteur:
+            ateliers_q = ateliers_q.filter(AtelierActivite.secteur == user_secteur)
+        rows = ateliers_q.order_by(AtelierActivite.nom.asc()).limit(limit).all()
+        for row in rows:
+            results.append({
+                "type": "Atelier",
+                "label": row.nom,
+                "meta": row.secteur or "",
+                "url": url_for("activite.sessions", atelier_id=row.id),
+            })
+
+    if can("partenaires:view"):
+        rows = (
+            Partenaire.query
+            .filter(
+                _all_tokens_filter(Partenaire.nom, Partenaire.email_contact, Partenaire.email_general)
+            )
+            .order_by(Partenaire.nom.asc())
+            .limit(limit)
+            .all()
+        )
+        for row in rows:
+            results.append({
+                "type": "Partenaire",
+                "label": row.nom,
+                "meta": row.email_contact or row.email_general or "",
+                "url": url_for("partenaires.edit", partenaire_id=row.id),
+            })
+
+    return jsonify({"results": results[:20], "query": term})
 
 
 # --------- Stats ---------
