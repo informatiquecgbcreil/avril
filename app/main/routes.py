@@ -61,7 +61,8 @@ from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
 
 from app.extensions import db
-from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
+from sqlalchemy import or_
+from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur, Participant
 from app.services.dashboard_service import build_dashboard_context
 
 bp = Blueprint("main", __name__)
@@ -69,6 +70,116 @@ bp = Blueprint("main", __name__)
 # --------- Permissions ---------
 def can_see_secteur(secteur: str) -> bool:
     return can_access_secteur(secteur)
+
+@bp.route("/search/live")
+@login_required
+def search_live():
+    query = (request.args.get("q") or "").strip()
+    if len(query) < 2:
+        return jsonify({"query": query, "results": []})
+
+    like = f"%{query}%"
+    results = []
+
+    if can("participants:view") or can("participants:view_all"):
+        participants_q = Participant.query
+        if not current_user.has_perm("participants:view_all"):
+            sec = (current_user.secteur_assigne or "").strip()
+            if sec:
+                subq_presence_ids = (
+                    db.session.query(PresenceActivite.participant_id)
+                    .join(SessionActivite, SessionActivite.id == PresenceActivite.session_id)
+                    .filter(SessionActivite.secteur == sec)
+                    .distinct()
+                )
+                participants_q = participants_q.filter(
+                    (Participant.created_secteur == sec) | (Participant.id.in_(subq_presence_ids))
+                )
+            else:
+                participants_q = participants_q.filter(db.text("1=0"))
+
+        participants = (
+            participants_q
+            .filter(
+                or_(
+                    Participant.nom.ilike(like),
+                    Participant.prenom.ilike(like),
+                    Participant.email.ilike(like),
+                    Participant.telephone.ilike(like),
+                    Participant.ville.ilike(like),
+                )
+            )
+            .order_by(Participant.nom.asc(), Participant.prenom.asc())
+            .limit(5)
+            .all()
+        )
+        for p in participants:
+            results.append({
+                "type": "participant",
+                "label": f"{p.nom} {p.prenom}".strip(),
+                "meta": "Participant",
+                "url": url_for("participants.edit_participant", participant_id=p.id),
+            })
+
+    if can("projets:view"):
+        projets_q = Projet.query
+        if not current_user.has_perm("scope:all_secteurs"):
+            projets_q = projets_q.filter(Projet.secteur == current_user.secteur_assigne)
+        projets = (
+            projets_q
+            .filter(or_(Projet.nom.ilike(like), Projet.description.ilike(like)))
+            .order_by(Projet.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        for p in projets:
+            results.append({
+                "type": "projet",
+                "label": p.nom,
+                "meta": f"Projet · {p.secteur}",
+                "url": url_for("projets.projets_edit", projet_id=p.id),
+            })
+
+    if can("subventions:view"):
+        subs_q = Subvention.query.filter_by(est_archive=False)
+        if not current_user.has_perm("scope:all_secteurs"):
+            subs_q = subs_q.filter(Subvention.secteur == current_user.secteur_assigne)
+        subs = (
+            subs_q
+            .filter(Subvention.nom.ilike(like))
+            .order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc())
+            .limit(5)
+            .all()
+        )
+        for s in subs:
+            results.append({
+                "type": "subvention",
+                "label": s.nom,
+                "meta": f"Subvention · {s.secteur} · {s.annee_exercice}",
+                "url": url_for("main.subvention_pilotage", subvention_id=s.id),
+            })
+
+    if can("emargement:view"):
+        sessions_q = SessionActivite.query.join(AtelierActivite, AtelierActivite.id == SessionActivite.atelier_id)
+        if not current_user.has_perm("scope:all_secteurs"):
+            sessions_q = sessions_q.filter(SessionActivite.secteur == current_user.secteur_assigne)
+        sessions = (
+            sessions_q
+            .filter(or_(AtelierActivite.nom.ilike(like), SessionActivite.kiosk_pin.ilike(like)))
+            .order_by(SessionActivite.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        for s in sessions:
+            when = s.rdv_date or s.date_session
+            results.append({
+                "type": "session",
+                "label": s.atelier.nom if s.atelier else f"Session #{s.id}",
+                "meta": f"Session · {when or 'date non définie'}",
+                "url": url_for("activite.emargement", session_id=s.id),
+            })
+
+    return jsonify({"query": query, "results": results[:12]})
 
 
 def _compute_prorata(lignes, montant_cible: float):

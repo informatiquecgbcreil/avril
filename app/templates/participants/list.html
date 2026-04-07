@@ -55,6 +55,12 @@
       </div>
     </div>
     {{ ux.helper('Le périmètre permet de limiter la recherche à votre secteur, aux fiches créées par votre secteur ou à l’annuaire global selon vos droits.') }}
+    <div class="inline-actions" style="margin-bottom:10px; gap:8px; flex-wrap:wrap;">
+      <span class="muted" style="font-size:12px;">Raccourcis</span>
+      <a class="btn" href="{{ url_for('participants.list_participants', presence='without', scope=scope, created_secteur=f_created_secteur) }}">Sans présence</a>
+      <a class="btn" href="{{ url_for('participants.list_participants', presence='with', scope=scope, created_secteur=f_created_secteur) }}">Avec présence</a>
+      <a class="btn" href="{{ url_for('participants.list_participants', q='@', scope=scope, created_secteur=f_created_secteur) }}">Avec e-mail</a>
+    </div>
     <form method="get" action="{{ url_for('participants.list_participants') }}" class="filters-grid stretch-input" data-filter-summary="true">
       <div class="field-stack">
         <label>Recherche</label>
