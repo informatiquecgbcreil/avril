@@ -660,7 +660,7 @@ def api_global_search():
     if len(term) < 2:
         return jsonify({"results": [], "query": term})
 
-    limit = 5
+    per_type_limit = 8
     tokens = [tok.strip().lower() for tok in term.split() if tok.strip()]
     if not tokens:
         return jsonify({"results": [], "query": term})
@@ -668,6 +668,13 @@ def api_global_search():
     has_global_scope = can("scope:all_secteurs")
     user_secteur = (getattr(current_user, "secteur_assigne", "") or "").strip()
     results = []
+    type_priority = {
+        "Participant": 0,
+        "Projet": 1,
+        "Subvention": 2,
+        "Atelier": 3,
+        "Partenaire": 4,
+    }
 
     def _all_tokens_filter(*columns):
         clauses = []
@@ -676,6 +683,23 @@ def api_global_search():
             per_token = [db.func.lower(db.func.coalesce(col, "")).like(like_token) for col in columns]
             clauses.append(db.or_(*per_token))
         return db.and_(*clauses)
+
+    def _score_item(label: str | None, meta: str | None) -> int:
+        label_low = (label or "").strip().lower()
+        meta_low = (meta or "").strip().lower()
+        score = 0
+        for token in tokens:
+            if label_low == token:
+                score += 120
+            if label_low.startswith(token):
+                score += 45
+            if f" {token}" in label_low:
+                score += 18
+            if token in label_low:
+                score += 25
+            if token in meta_low:
+                score += 8
+        return score
 
     if can("participants:view") or can("participants:view_all"):
         participants_q = Participant.query.filter(
@@ -701,13 +725,16 @@ def api_global_search():
                     has_presence_in_user_secteur,
                 )
             )
-        rows = participants_q.order_by(Participant.nom.asc(), Participant.prenom.asc()).limit(limit).all()
+        rows = participants_q.order_by(Participant.updated_at.desc(), Participant.nom.asc(), Participant.prenom.asc()).limit(per_type_limit).all()
         for row in rows:
+            label = f"{(row.prenom or '').strip()} {(row.nom or '').strip()}".strip() or f"Participant #{row.id}"
+            meta = row.ville or row.email or "Fiche participant"
             results.append({
                 "type": "Participant",
-                "label": f"{(row.prenom or '').strip()} {(row.nom or '').strip()}".strip() or f"Participant #{row.id}",
-                "meta": row.ville or row.email or "Fiche participant",
+                "label": label,
+                "meta": meta,
                 "url": url_for("participants.edit_participant", participant_id=row.id),
+                "score": _score_item(label, meta),
             })
 
     if can("projets:view"):
@@ -716,13 +743,16 @@ def api_global_search():
         )
         if not has_global_scope and user_secteur:
             projets_q = projets_q.filter(Projet.secteur == user_secteur)
-        rows = projets_q.order_by(Projet.nom.asc()).limit(limit).all()
+        rows = projets_q.order_by(Projet.created_at.desc(), Projet.nom.asc()).limit(per_type_limit).all()
         for row in rows:
+            label = row.nom
+            meta = row.secteur or ""
             results.append({
                 "type": "Projet",
-                "label": row.nom,
-                "meta": row.secteur or "",
+                "label": label,
+                "meta": meta,
                 "url": url_for("projets.projets_edit", projet_id=row.id),
+                "score": _score_item(label, meta),
             })
 
     if can("subventions:view"):
@@ -732,13 +762,16 @@ def api_global_search():
         )
         if not has_global_scope and user_secteur:
             subventions_q = subventions_q.filter(Subvention.secteur == user_secteur)
-        rows = subventions_q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).limit(limit).all()
+        rows = subventions_q.order_by(Subvention.annee_exercice.desc(), Subvention.created_at.desc(), Subvention.nom.asc()).limit(per_type_limit).all()
         for row in rows:
+            label = row.nom
+            meta = f"{row.secteur} · {row.annee_exercice}"
             results.append({
                 "type": "Subvention",
-                "label": row.nom,
-                "meta": f"{row.secteur} · {row.annee_exercice}",
+                "label": label,
+                "meta": meta,
                 "url": url_for("main.subvention_pilotage", subvention_id=row.id),
+                "score": _score_item(label, meta),
             })
 
     if can("emargement:view"):
@@ -748,13 +781,16 @@ def api_global_search():
         )
         if not has_global_scope and user_secteur:
             ateliers_q = ateliers_q.filter(AtelierActivite.secteur == user_secteur)
-        rows = ateliers_q.order_by(AtelierActivite.nom.asc()).limit(limit).all()
+        rows = ateliers_q.order_by(AtelierActivite.created_at.desc(), AtelierActivite.nom.asc()).limit(per_type_limit).all()
         for row in rows:
+            label = row.nom
+            meta = row.secteur or ""
             results.append({
                 "type": "Atelier",
-                "label": row.nom,
-                "meta": row.secteur or "",
+                "label": label,
+                "meta": meta,
                 "url": url_for("activite.sessions", atelier_id=row.id),
+                "score": _score_item(label, meta),
             })
 
     if can("partenaires:view"):
@@ -764,18 +800,30 @@ def api_global_search():
                 _all_tokens_filter(Partenaire.nom, Partenaire.email_contact, Partenaire.email_general)
             )
             .order_by(Partenaire.nom.asc())
-            .limit(limit)
+            .limit(per_type_limit)
             .all()
         )
         for row in rows:
+            label = row.nom
+            meta = row.email_contact or row.email_general or ""
             results.append({
                 "type": "Partenaire",
-                "label": row.nom,
-                "meta": row.email_contact or row.email_general or "",
+                "label": label,
+                "meta": meta,
                 "url": url_for("partenaires.edit", partenaire_id=row.id),
+                "score": _score_item(label, meta),
             })
 
-    return jsonify({"results": results[:20], "query": term})
+    results_sorted = sorted(
+        results,
+        key=lambda item: (
+            -int(item.get("score") or 0),
+            type_priority.get(item.get("type") or "", 99),
+            (item.get("label") or "").lower(),
+        ),
+    )
+    trimmed = [{k: v for k, v in row.items() if k != "score"} for row in results_sorted[:20]]
+    return jsonify({"results": trimmed, "query": term})
 
 
 # --------- Stats ---------

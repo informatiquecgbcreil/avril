@@ -218,6 +218,23 @@
     .global-search__item:hover{
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
     }
+    .global-search__item.is-active{
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      outline:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .global-search__section{
+      padding:8px 0 4px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .global-search__section:last-child{ border-bottom:none; padding-bottom:0; }
+    .global-search__section-title{
+      font-size:11px;
+      font-weight:800;
+      color:var(--muted);
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      padding:0 12px 6px;
+    }
     .global-search__type{ font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; letter-spacing:.3px; }
     .global-search__label{ font-weight:700; margin-top:2px; }
     .global-search__meta{ font-size:12px; color:var(--muted); margin-top:2px; }
@@ -458,7 +475,7 @@
           <div class="right">
             <div class="global-search">
               <label for="global-search-input" class="sr-only">Recherche globale</label>
-              <input id="global-search-input" type="search" placeholder="Recherche globale (participants, projets, ateliers...)" autocomplete="off" />
+              <input id="global-search-input" type="search" placeholder="Recherche globale (participants, projets, ateliers...)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="global-search-results" />
               <div id="global-search-results" class="global-search__panel" role="listbox" aria-label="Résultats de recherche"></div>
             </div>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
@@ -581,26 +598,65 @@
 
     let debounce = null;
     let lastValue = "";
+    let activeIndex = -1;
 
     function hidePanel(){
       panel.classList.remove("visible");
       panel.innerHTML = "";
+      activeIndex = -1;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+
+    function groupedItems(items){
+      const groups = new Map();
+      items.forEach((item) => {
+        const key = item.type || "Autres";
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      });
+      return Array.from(groups.entries());
+    }
+
+    function refreshActiveItem(){
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      anchors.forEach((node, idx) => {
+        const selected = idx === activeIndex;
+        node.classList.toggle("is-active", selected);
+        node.setAttribute("aria-selected", selected ? "true" : "false");
+        if(selected){
+          input.setAttribute("aria-activedescendant", node.id);
+          node.scrollIntoView({block: "nearest"});
+        }
+      });
     }
 
     function render(items){
       if(!items.length){
         panel.innerHTML = '<div class="global-search__empty">Aucun résultat.</div>';
         panel.classList.add("visible");
+        input.setAttribute("aria-expanded", "true");
         return;
       }
-      panel.innerHTML = items.map((item) => `
-        <a class="global-search__item" href="${item.url}">
-          <div class="global-search__type">${item.type}</div>
-          <div class="global-search__label">${item.label}</div>
-          <div class="global-search__meta">${item.meta || ''}</div>
-        </a>
+      let index = 0;
+      panel.innerHTML = groupedItems(items).map(([type, group]) => `
+        <section class="global-search__section" aria-label="${type}">
+          <div class="global-search__section-title">${type}</div>
+          ${group.map((item) => {
+            const itemId = `global-search-item-${index++}`;
+            return `
+              <a id="${itemId}" class="global-search__item" role="option" aria-selected="false" href="${item.url}">
+                <div class="global-search__type">${item.type}</div>
+                <div class="global-search__label">${item.label}</div>
+                <div class="global-search__meta">${item.meta || ''}</div>
+              </a>
+            `;
+          }).join("")}
+        </section>
       `).join("");
       panel.classList.add("visible");
+      input.setAttribute("aria-expanded", "true");
+      activeIndex = -1;
     }
 
     async function search(term){
@@ -642,6 +698,22 @@
     });
 
     input.addEventListener("keydown", (event) => {
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      if((event.key === "ArrowDown" || event.key === "ArrowUp") && anchors.length){
+        event.preventDefault();
+        if(event.key === "ArrowDown"){
+          activeIndex = (activeIndex + 1) % anchors.length;
+        }else{
+          activeIndex = activeIndex <= 0 ? anchors.length - 1 : activeIndex - 1;
+        }
+        refreshActiveItem();
+        return;
+      }
+      if(event.key === "Enter" && activeIndex >= 0 && anchors[activeIndex]){
+        event.preventDefault();
+        window.location.href = anchors[activeIndex].getAttribute("href");
+        return;
+      }
       if(event.key === "Escape"){
         hidePanel();
       }
