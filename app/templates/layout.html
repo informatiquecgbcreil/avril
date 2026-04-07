@@ -179,6 +179,66 @@
     }
 
     .right{ margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .global-search{ position:relative; min-width:280px; max-width:420px; width:min(40vw, 420px); }
+    .global-search input{
+      width:100%;
+      border:1px solid var(--input-border);
+      border-radius:999px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      padding:9px 14px;
+      font-size:14px;
+    }
+    .global-search input:focus{
+      outline:2px solid var(--focus);
+      outline-offset:1px;
+    }
+    .global-search__panel{
+      position:absolute;
+      top:calc(100% + 8px);
+      left:0;
+      right:0;
+      border:1px solid var(--border-soft);
+      border-radius:14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      max-height:320px;
+      overflow:auto;
+      z-index:30;
+      display:none;
+    }
+    .global-search__panel.visible{ display:block; }
+    .global-search__item{
+      display:block;
+      padding:10px 12px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      text-decoration:none !important;
+    }
+    .global-search__item:last-child{ border-bottom:none; }
+    .global-search__item:hover{
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    }
+    .global-search__item.is-active{
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      outline:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .global-search__section{
+      padding:8px 0 4px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .global-search__section:last-child{ border-bottom:none; padding-bottom:0; }
+    .global-search__section-title{
+      font-size:11px;
+      font-weight:800;
+      color:var(--muted);
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      padding:0 12px 6px;
+    }
+    .global-search__type{ font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; letter-spacing:.3px; }
+    .global-search__label{ font-weight:700; margin-top:2px; }
+    .global-search__meta{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .global-search__empty{ padding:10px 12px; color:var(--muted); font-size:13px; }
 
     .tag{
       font-size:12px; color: var(--muted);
@@ -413,6 +473,11 @@
           {% endif %}
 
           <div class="right">
+            <div class="global-search">
+              <label for="global-search-input" class="sr-only">Recherche globale</label>
+              <input id="global-search-input" type="search" placeholder="Recherche globale (participants, projets, ateliers...)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="global-search-results" />
+              <div id="global-search-results" class="global-search__panel" role="listbox" aria-label="Résultats de recherche"></div>
+            </div>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
 
             <div class="tag">
@@ -524,6 +589,137 @@
 
     {% block body %}{% endblock %}
   </div>
+
+  <script>
+  (function(){
+    const input = document.getElementById("global-search-input");
+    const panel = document.getElementById("global-search-results");
+    if(!input || !panel) return;
+
+    let debounce = null;
+    let lastValue = "";
+    let activeIndex = -1;
+
+    function hidePanel(){
+      panel.classList.remove("visible");
+      panel.innerHTML = "";
+      activeIndex = -1;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+
+    function groupedItems(items){
+      const groups = new Map();
+      items.forEach((item) => {
+        const key = item.type || "Autres";
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      });
+      return Array.from(groups.entries());
+    }
+
+    function refreshActiveItem(){
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      anchors.forEach((node, idx) => {
+        const selected = idx === activeIndex;
+        node.classList.toggle("is-active", selected);
+        node.setAttribute("aria-selected", selected ? "true" : "false");
+        if(selected){
+          input.setAttribute("aria-activedescendant", node.id);
+          node.scrollIntoView({block: "nearest"});
+        }
+      });
+    }
+
+    function render(items){
+      if(!items.length){
+        panel.innerHTML = '<div class="global-search__empty">Aucun résultat.</div>';
+        panel.classList.add("visible");
+        input.setAttribute("aria-expanded", "true");
+        return;
+      }
+      let index = 0;
+      panel.innerHTML = groupedItems(items).map(([type, group]) => `
+        <section class="global-search__section" aria-label="${type}">
+          <div class="global-search__section-title">${type}</div>
+          ${group.map((item) => {
+            const itemId = `global-search-item-${index++}`;
+            return `
+              <a id="${itemId}" class="global-search__item" role="option" aria-selected="false" href="${item.url}">
+                <div class="global-search__type">${item.type}</div>
+                <div class="global-search__label">${item.label}</div>
+                <div class="global-search__meta">${item.meta || ''}</div>
+              </a>
+            `;
+          }).join("")}
+        </section>
+      `).join("");
+      panel.classList.add("visible");
+      input.setAttribute("aria-expanded", "true");
+      activeIndex = -1;
+    }
+
+    async function search(term){
+      try{
+        const response = await fetch(`/api/global-search?q=${encodeURIComponent(term)}`, {
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        if(!response.ok){
+          hidePanel();
+          return;
+        }
+        const data = await response.json();
+        if((input.value || "").trim() !== term){
+          return;
+        }
+        render(data.results || []);
+      }catch(_err){
+        hidePanel();
+      }
+    }
+
+    input.addEventListener("input", () => {
+      const term = (input.value || "").trim();
+      if(term === lastValue) return;
+      lastValue = term;
+      if(debounce) window.clearTimeout(debounce);
+      if(term.length < 2){
+        hidePanel();
+        return;
+      }
+      debounce = window.setTimeout(() => search(term), 170);
+    });
+
+    document.addEventListener("click", (event) => {
+      if(event.target === input || panel.contains(event.target)){
+        return;
+      }
+      hidePanel();
+    });
+
+    input.addEventListener("keydown", (event) => {
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      if((event.key === "ArrowDown" || event.key === "ArrowUp") && anchors.length){
+        event.preventDefault();
+        if(event.key === "ArrowDown"){
+          activeIndex = (activeIndex + 1) % anchors.length;
+        }else{
+          activeIndex = activeIndex <= 0 ? anchors.length - 1 : activeIndex - 1;
+        }
+        refreshActiveItem();
+        return;
+      }
+      if(event.key === "Enter" && activeIndex >= 0 && anchors[activeIndex]){
+        event.preventDefault();
+        window.location.href = anchors[activeIndex].getAttribute("href");
+        return;
+      }
+      if(event.key === "Escape"){
+        hidePanel();
+      }
+    });
+  })();
+  </script>
 
   <script>
   (function(){
