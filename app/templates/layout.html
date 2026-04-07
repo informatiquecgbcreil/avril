@@ -239,6 +239,26 @@
     .global-search__label{ font-weight:700; margin-top:2px; }
     .global-search__meta{ font-size:12px; color:var(--muted); margin-top:2px; }
     .global-search__empty{ padding:10px 12px; color:var(--muted); font-size:13px; }
+    .global-search__facets{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      padding:8px 10px 6px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .global-search__facet{
+      border:1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--surface) 85%, transparent);
+      color:var(--text);
+      border-radius:999px;
+      font-size:12px;
+      padding:4px 8px;
+      cursor:pointer;
+    }
+    .global-search__facet.is-active{
+      border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+      background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+    }
 
     .tag{
       font-size:12px; color: var(--muted);
@@ -475,7 +495,7 @@
           <div class="right">
             <div class="global-search">
               <label for="global-search-input" class="sr-only">Recherche globale</label>
-              <input id="global-search-input" type="search" placeholder="Recherche globale (participants, projets, ateliers...)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="global-search-results" />
+              <input id="global-search-input" type="search" placeholder="Recherche globale (astuce: type:participant secteur:NomSecteur)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="global-search-results" />
               <div id="global-search-results" class="global-search__panel" role="listbox" aria-label="Résultats de recherche"></div>
             </div>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
@@ -599,6 +619,8 @@
     let debounce = null;
     let lastValue = "";
     let activeIndex = -1;
+    let facetType = "all";
+    let lastPayload = null;
 
     function hidePanel(){
       panel.classList.remove("visible");
@@ -606,6 +628,8 @@
       activeIndex = -1;
       input.setAttribute("aria-expanded", "false");
       input.removeAttribute("aria-activedescendant");
+      facetType = "all";
+      lastPayload = null;
     }
 
     function groupedItems(items){
@@ -631,15 +655,44 @@
       });
     }
 
-    function render(items){
+    function render(payload){
+      const facets = payload?.facets || {};
+      const items = payload?.results || [];
+      lastPayload = payload || {results: [], facets: {}};
+      const filteredItems = facetType === "all" ? items : items.filter((item) => item.type === facetType);
       if(!items.length){
         panel.innerHTML = '<div class="global-search__empty">Aucun résultat.</div>';
         panel.classList.add("visible");
         input.setAttribute("aria-expanded", "true");
         return;
       }
+      const typeFacets = facets.types || {};
+      const facetButtons = [
+        `<button type="button" class="global-search__facet ${facetType === "all" ? "is-active" : ""}" data-facet-type="all">Tout (${items.length})</button>`,
+        ...Object.entries(typeFacets).map(([type, count]) => `
+          <button type="button" class="global-search__facet ${facetType === type ? "is-active" : ""}" data-facet-type="${type}">${type} (${count})</button>
+        `)
+      ].join("");
+
+      if(!filteredItems.length){
+        panel.innerHTML = `
+          <div class="global-search__facets">${facetButtons}</div>
+          <div class="global-search__empty">Aucun résultat pour ce filtre.</div>
+        `;
+        panel.classList.add("visible");
+        input.setAttribute("aria-expanded", "true");
+        panel.querySelectorAll("[data-facet-type]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            facetType = btn.getAttribute("data-facet-type") || "all";
+            render(lastPayload);
+          });
+        });
+        return;
+      }
       let index = 0;
-      panel.innerHTML = groupedItems(items).map(([type, group]) => `
+      panel.innerHTML = `
+        <div class="global-search__facets">${facetButtons}</div>
+        ${groupedItems(filteredItems).map(([type, group]) => `
         <section class="global-search__section" aria-label="${type}">
           <div class="global-search__section-title">${type}</div>
           ${group.map((item) => {
@@ -653,10 +706,17 @@
             `;
           }).join("")}
         </section>
-      `).join("");
+      `).join("")}
+      `;
       panel.classList.add("visible");
       input.setAttribute("aria-expanded", "true");
       activeIndex = -1;
+      panel.querySelectorAll("[data-facet-type]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          facetType = btn.getAttribute("data-facet-type") || "all";
+          render(lastPayload);
+        });
+      });
     }
 
     async function search(term){
@@ -672,7 +732,8 @@
         if((input.value || "").trim() !== term){
           return;
         }
-        render(data.results || []);
+        facetType = "all";
+        render(data || {});
       }catch(_err){
         hidePanel();
       }

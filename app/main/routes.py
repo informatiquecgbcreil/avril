@@ -660,14 +660,34 @@ def api_global_search():
     if len(term) < 2:
         return jsonify({"results": [], "query": term})
 
+    raw_parts = [tok.strip() for tok in term.split() if tok.strip()]
+    type_filter = None
+    secteur_filter = None
+    free_parts = []
+    for part in raw_parts:
+        low = part.lower()
+        if low.startswith("type:"):
+            type_filter = (part.split(":", 1)[1] or "").strip().lower() or None
+            continue
+        if low.startswith("secteur:"):
+            secteur_filter = (part.split(":", 1)[1] or "").strip()
+            continue
+        free_parts.append(part)
+
     per_type_limit = 8
-    tokens = [tok.strip().lower() for tok in term.split() if tok.strip()]
+    tokens = [tok.strip().lower() for tok in free_parts if tok.strip()]
     if not tokens:
         return jsonify({"results": [], "query": term})
 
     has_global_scope = can("scope:all_secteurs")
     user_secteur = (getattr(current_user, "secteur_assigne", "") or "").strip()
     results = []
+    requested_secteur = (secteur_filter or "").strip()
+    if requested_secteur and (not has_global_scope):
+        if requested_secteur.lower() != user_secteur.lower():
+            return jsonify({"results": [], "query": term, "facets": {"types": {}, "secteurs": {}}})
+    active_secteur_filter = requested_secteur or (None if has_global_scope else user_secteur)
+
     type_priority = {
         "Participant": 0,
         "Projet": 1,
@@ -675,6 +695,19 @@ def api_global_search():
         "Atelier": 3,
         "Partenaire": 4,
     }
+    type_aliases = {
+        "participant": "Participant",
+        "participants": "Participant",
+        "projet": "Projet",
+        "projets": "Projet",
+        "subvention": "Subvention",
+        "subventions": "Subvention",
+        "atelier": "Atelier",
+        "ateliers": "Atelier",
+        "partenaire": "Partenaire",
+        "partenaires": "Partenaire",
+    }
+    wanted_type = type_aliases.get(type_filter or "", None)
 
     def _all_tokens_filter(*columns):
         clauses = []
@@ -701,7 +734,7 @@ def api_global_search():
                 score += 8
         return score
 
-    if can("participants:view") or can("participants:view_all"):
+    if (wanted_type in {None, "Participant"}) and (can("participants:view") or can("participants:view_all")):
         participants_q = Participant.query.filter(
             _all_tokens_filter(
                 Participant.nom,
@@ -711,17 +744,17 @@ def api_global_search():
                 Participant.ville,
             )
         )
-        if not has_global_scope and user_secteur:
+        if active_secteur_filter:
             has_presence_in_user_secteur = (
                 db.session.query(PresenceActivite.id)
                 .join(SessionActivite, SessionActivite.id == PresenceActivite.session_id)
                 .filter(PresenceActivite.participant_id == Participant.id)
-                .filter(SessionActivite.secteur == user_secteur)
+                .filter(SessionActivite.secteur == active_secteur_filter)
                 .exists()
             )
             participants_q = participants_q.filter(
                 db.or_(
-                    Participant.created_secteur == user_secteur,
+                    Participant.created_secteur == active_secteur_filter,
                     has_presence_in_user_secteur,
                 )
             )
@@ -733,16 +766,17 @@ def api_global_search():
                 "type": "Participant",
                 "label": label,
                 "meta": meta,
+                "secteur": row.created_secteur or "",
                 "url": url_for("participants.edit_participant", participant_id=row.id),
                 "score": _score_item(label, meta),
             })
 
-    if can("projets:view"):
+    if (wanted_type in {None, "Projet"}) and can("projets:view"):
         projets_q = Projet.query.filter(
             _all_tokens_filter(Projet.nom, Projet.description, Projet.secteur)
         )
-        if not has_global_scope and user_secteur:
-            projets_q = projets_q.filter(Projet.secteur == user_secteur)
+        if active_secteur_filter:
+            projets_q = projets_q.filter(Projet.secteur == active_secteur_filter)
         rows = projets_q.order_by(Projet.created_at.desc(), Projet.nom.asc()).limit(per_type_limit).all()
         for row in rows:
             label = row.nom
@@ -751,17 +785,18 @@ def api_global_search():
                 "type": "Projet",
                 "label": label,
                 "meta": meta,
+                "secteur": row.secteur or "",
                 "url": url_for("projets.projets_edit", projet_id=row.id),
                 "score": _score_item(label, meta),
             })
 
-    if can("subventions:view"):
+    if (wanted_type in {None, "Subvention"}) and can("subventions:view"):
         subventions_q = Subvention.query.filter(
             Subvention.est_archive.is_(False),
             _all_tokens_filter(Subvention.nom, Subvention.secteur)
         )
-        if not has_global_scope and user_secteur:
-            subventions_q = subventions_q.filter(Subvention.secteur == user_secteur)
+        if active_secteur_filter:
+            subventions_q = subventions_q.filter(Subvention.secteur == active_secteur_filter)
         rows = subventions_q.order_by(Subvention.annee_exercice.desc(), Subvention.created_at.desc(), Subvention.nom.asc()).limit(per_type_limit).all()
         for row in rows:
             label = row.nom
@@ -770,17 +805,18 @@ def api_global_search():
                 "type": "Subvention",
                 "label": label,
                 "meta": meta,
+                "secteur": row.secteur or "",
                 "url": url_for("main.subvention_pilotage", subvention_id=row.id),
                 "score": _score_item(label, meta),
             })
 
-    if can("emargement:view"):
+    if (wanted_type in {None, "Atelier"}) and can("emargement:view"):
         ateliers_q = AtelierActivite.query.filter(
             AtelierActivite.is_deleted.is_(False),
             _all_tokens_filter(AtelierActivite.nom, AtelierActivite.description, AtelierActivite.secteur)
         )
-        if not has_global_scope and user_secteur:
-            ateliers_q = ateliers_q.filter(AtelierActivite.secteur == user_secteur)
+        if active_secteur_filter:
+            ateliers_q = ateliers_q.filter(AtelierActivite.secteur == active_secteur_filter)
         rows = ateliers_q.order_by(AtelierActivite.created_at.desc(), AtelierActivite.nom.asc()).limit(per_type_limit).all()
         for row in rows:
             label = row.nom
@@ -789,11 +825,12 @@ def api_global_search():
                 "type": "Atelier",
                 "label": label,
                 "meta": meta,
+                "secteur": row.secteur or "",
                 "url": url_for("activite.sessions", atelier_id=row.id),
                 "score": _score_item(label, meta),
             })
 
-    if can("partenaires:view"):
+    if (wanted_type in {None, "Partenaire"}) and can("partenaires:view"):
         rows = (
             Partenaire.query
             .filter(
@@ -810,6 +847,7 @@ def api_global_search():
                 "type": "Partenaire",
                 "label": label,
                 "meta": meta,
+                "secteur": "",
                 "url": url_for("partenaires.edit", partenaire_id=row.id),
                 "score": _score_item(label, meta),
             })
@@ -822,8 +860,24 @@ def api_global_search():
             (item.get("label") or "").lower(),
         ),
     )
+    type_facets = {}
+    secteur_facets = {}
+    for row in results_sorted:
+        t = row.get("type") or "Autres"
+        type_facets[t] = int(type_facets.get(t, 0)) + 1
+        s = (row.get("secteur") or "").strip()
+        if s:
+            secteur_facets[s] = int(secteur_facets.get(s, 0)) + 1
+
     trimmed = [{k: v for k, v in row.items() if k != "score"} for row in results_sorted[:20]]
-    return jsonify({"results": trimmed, "query": term})
+    return jsonify({
+        "results": trimmed,
+        "query": term,
+        "facets": {
+            "types": type_facets,
+            "secteurs": secteur_facets,
+        },
+    })
 
 
 # --------- Stats ---------
