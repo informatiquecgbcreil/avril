@@ -179,6 +179,92 @@
     }
 
     .right{ margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .global-search{ position:relative; min-width:280px; max-width:420px; width:min(40vw, 420px); }
+    .global-search input{
+      width:100%;
+      border:1px solid var(--input-border);
+      border-radius:999px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      padding:9px 14px;
+      font-size:14px;
+    }
+    .global-search input:focus{
+      outline:2px solid var(--focus);
+      outline-offset:1px;
+    }
+    .global-search__panel{
+      position:absolute;
+      top:calc(100% + 8px);
+      left:0;
+      right:0;
+      border:1px solid var(--border-soft);
+      border-radius:14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      max-height:320px;
+      overflow:auto;
+      z-index:30;
+      display:none;
+    }
+    .global-search__panel.visible{ display:block; }
+    .global-search__item{
+      display:block;
+      padding:10px 12px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      text-decoration:none !important;
+    }
+    .global-search__item:last-child{ border-bottom:none; }
+    .global-search__item:hover{
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    }
+    .global-search__item.is-active{
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      outline:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .global-search__section{
+      padding:8px 0 4px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .global-search__section:last-child{ border-bottom:none; padding-bottom:0; }
+    .global-search__section-title{
+      font-size:11px;
+      font-weight:800;
+      color:var(--muted);
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      padding:0 12px 6px;
+    }
+    .global-search__type{ font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; letter-spacing:.3px; }
+    .global-search__label{ font-weight:700; margin-top:2px; }
+    .global-search__meta{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .global-search mark{
+      background: color-mix(in srgb, var(--accent) 22%, transparent);
+      color: inherit;
+      border-radius:4px;
+      padding:0 2px;
+    }
+    .global-search__empty{ padding:10px 12px; color:var(--muted); font-size:13px; }
+    .global-search__facets{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      padding:8px 10px 6px;
+      border-bottom:1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .global-search__facet{
+      border:1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--surface) 85%, transparent);
+      color:var(--text);
+      border-radius:999px;
+      font-size:12px;
+      padding:4px 8px;
+      cursor:pointer;
+    }
+    .global-search__facet.is-active{
+      border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+      background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+    }
 
     .tag{
       font-size:12px; color: var(--muted);
@@ -413,6 +499,11 @@
           {% endif %}
 
           <div class="right">
+            <div class="global-search">
+              <label for="global-search-input" class="sr-only">Recherche globale</label>
+              <input id="global-search-input" type="search" placeholder="Recherche globale (astuce: type:participant secteur:NomSecteur)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="global-search-results" />
+              <div id="global-search-results" class="global-search__panel" role="listbox" aria-label="Résultats de recherche"></div>
+            </div>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
 
             <div class="tag">
@@ -524,6 +615,214 @@
 
     {% block body %}{% endblock %}
   </div>
+
+  <script>
+  (function(){
+    const input = document.getElementById("global-search-input");
+    const panel = document.getElementById("global-search-results");
+    if(!input || !panel) return;
+
+    let debounce = null;
+    let lastValue = "";
+    let activeIndex = -1;
+    let facetType = "all";
+    let lastPayload = null;
+
+    function escHtml(value){
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function highlighted(value){
+      const txt = String(value || "");
+      const raw = (input.value || "").trim().split(/\s+/).filter(Boolean);
+      const tokens = raw.filter((part)=>!part.toLowerCase().startsWith("type:") && !part.toLowerCase().startsWith("secteur:"));
+      if(!tokens.length) return escHtml(txt);
+      let out = escHtml(txt);
+      tokens.forEach((token) => {
+        const safe = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const reg = new RegExp(`(${safe})`, "ig");
+        out = out.replace(reg, "<mark>$1</mark>");
+      });
+      return out;
+    }
+
+    function hidePanel(){
+      panel.classList.remove("visible");
+      panel.innerHTML = "";
+      activeIndex = -1;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+      facetType = "all";
+      lastPayload = null;
+    }
+
+    function groupedItems(items){
+      const groups = new Map();
+      items.forEach((item) => {
+        const key = item.type || "Autres";
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      });
+      return Array.from(groups.entries());
+    }
+
+    function refreshActiveItem(){
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      anchors.forEach((node, idx) => {
+        const selected = idx === activeIndex;
+        node.classList.toggle("is-active", selected);
+        node.setAttribute("aria-selected", selected ? "true" : "false");
+        if(selected){
+          input.setAttribute("aria-activedescendant", node.id);
+          node.scrollIntoView({block: "nearest"});
+        }
+      });
+    }
+
+    function render(payload){
+      const facets = payload?.facets || {};
+      const items = payload?.results || [];
+      lastPayload = payload || {results: [], facets: {}};
+      const filteredItems = facetType === "all" ? items : items.filter((item) => item.type === facetType);
+      const duration = Number(payload?.debug?.duration_ms || 0);
+      const metaInfo = duration ? `<div class="global-search__empty">Résultats en ${duration} ms.</div>` : "";
+      if(!items.length){
+        panel.innerHTML = `${metaInfo}<div class="global-search__empty">Aucun résultat.</div>`;
+        panel.classList.add("visible");
+        input.setAttribute("aria-expanded", "true");
+        return;
+      }
+      const typeFacets = facets.types || {};
+      const facetButtons = [
+        `<button type="button" class="global-search__facet ${facetType === "all" ? "is-active" : ""}" data-facet-type="all">Tout (${items.length})</button>`,
+        ...Object.entries(typeFacets).map(([type, count]) => `
+          <button type="button" class="global-search__facet ${facetType === type ? "is-active" : ""}" data-facet-type="${type}">${type} (${count})</button>
+        `)
+      ].join("");
+
+      if(!filteredItems.length){
+        panel.innerHTML = `
+          <div class="global-search__facets">${facetButtons}</div>
+          ${metaInfo}
+          <div class="global-search__empty">Aucun résultat pour ce filtre.</div>
+        `;
+        panel.classList.add("visible");
+        input.setAttribute("aria-expanded", "true");
+        panel.querySelectorAll("[data-facet-type]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            facetType = btn.getAttribute("data-facet-type") || "all";
+            render(lastPayload);
+          });
+        });
+        return;
+      }
+      let index = 0;
+      panel.innerHTML = `
+        <div class="global-search__facets">${facetButtons}</div>
+        ${metaInfo}
+        ${groupedItems(filteredItems).map(([type, group]) => `
+        <section class="global-search__section" aria-label="${type}">
+          <div class="global-search__section-title">${type}</div>
+          ${group.map((item) => {
+            const itemId = `global-search-item-${index++}`;
+            return `
+              <a id="${itemId}" class="global-search__item" role="option" aria-selected="false" href="${item.url}">
+                <div class="global-search__type">${escHtml(item.type)}</div>
+                <div class="global-search__label">${highlighted(item.label)}</div>
+                <div class="global-search__meta">${highlighted(item.meta || '')}</div>
+              </a>
+            `;
+          }).join("")}
+        </section>
+      `).join("")}
+      `;
+      panel.classList.add("visible");
+      input.setAttribute("aria-expanded", "true");
+      activeIndex = -1;
+      panel.querySelectorAll("[data-facet-type]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          facetType = btn.getAttribute("data-facet-type") || "all";
+          render(lastPayload);
+        });
+      });
+    }
+
+    async function search(term){
+      try{
+        const response = await fetch(`/api/global-search?q=${encodeURIComponent(term)}`, {
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        if(!response.ok){
+          hidePanel();
+          return;
+        }
+        const data = await response.json();
+        if((input.value || "").trim() !== term){
+          return;
+        }
+        facetType = "all";
+        render(data || {});
+      }catch(_err){
+        hidePanel();
+      }
+    }
+
+    input.addEventListener("input", () => {
+      const term = (input.value || "").trim();
+      if(term === lastValue) return;
+      lastValue = term;
+      if(debounce) window.clearTimeout(debounce);
+      if(term.length < 2){
+        hidePanel();
+        return;
+      }
+      debounce = window.setTimeout(() => search(term), 170);
+    });
+
+    document.addEventListener("click", (event) => {
+      if(event.target === input || panel.contains(event.target)){
+        return;
+      }
+      hidePanel();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const key = (event.key || "").toLowerCase();
+      if((event.ctrlKey || event.metaKey) && key === "k"){
+        event.preventDefault();
+        input.focus();
+        input.select();
+      }
+    });
+
+    input.addEventListener("keydown", (event) => {
+      const anchors = Array.from(panel.querySelectorAll(".global-search__item"));
+      if((event.key === "ArrowDown" || event.key === "ArrowUp") && anchors.length){
+        event.preventDefault();
+        if(event.key === "ArrowDown"){
+          activeIndex = (activeIndex + 1) % anchors.length;
+        }else{
+          activeIndex = activeIndex <= 0 ? anchors.length - 1 : activeIndex - 1;
+        }
+        refreshActiveItem();
+        return;
+      }
+      if(event.key === "Enter" && activeIndex >= 0 && anchors[activeIndex]){
+        event.preventDefault();
+        window.location.href = anchors[activeIndex].getAttribute("href");
+        return;
+      }
+      if(event.key === "Escape"){
+        hidePanel();
+      }
+    });
+  })();
+  </script>
 
   <script>
   (function(){

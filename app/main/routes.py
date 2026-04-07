@@ -1,6 +1,8 @@
 import csv
 from io import StringIO, BytesIO
 from datetime import date
+from time import perf_counter
+from difflib import SequenceMatcher
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -61,7 +63,20 @@ from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
 
 from app.extensions import db
-from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
+from app.models import (
+    Subvention,
+    LigneBudget,
+    Depense,
+    Projet,
+    SubventionProjet,
+    AtelierActivite,
+    SessionActivite,
+    PresenceActivite,
+    ProjetAtelier,
+    ProjetIndicateur,
+    Participant,
+    Partenaire,
+)
 from app.services.dashboard_service import build_dashboard_context
 
 bp = Blueprint("main", __name__)
@@ -638,6 +653,254 @@ def api_lignes(subvention_id):
         })
 
     return jsonify({"lignes": out})
+
+
+@bp.route("/api/global-search")
+@login_required
+def api_global_search():
+    start_ts = perf_counter()
+    term = (request.args.get("q") or "").strip()
+    if len(term) < 2:
+        return jsonify({"results": [], "query": term})
+
+    raw_parts = [tok.strip() for tok in term.split() if tok.strip()]
+    type_filter = None
+    secteur_filter = None
+    free_parts = []
+    for part in raw_parts:
+        low = part.lower()
+        if low.startswith("type:"):
+            type_filter = (part.split(":", 1)[1] or "").strip().lower() or None
+            continue
+        if low.startswith("secteur:"):
+            secteur_filter = (part.split(":", 1)[1] or "").strip()
+            continue
+        free_parts.append(part)
+
+    per_type_limit = 8
+    tokens = [tok.strip().lower() for tok in free_parts if tok.strip()]
+    if not tokens:
+        return jsonify({"results": [], "query": term})
+
+    has_global_scope = can("scope:all_secteurs")
+    user_secteur = (getattr(current_user, "secteur_assigne", "") or "").strip()
+    results = []
+    requested_secteur = (secteur_filter or "").strip()
+    if requested_secteur and (not has_global_scope):
+        if requested_secteur.lower() != user_secteur.lower():
+            return jsonify({"results": [], "query": term, "facets": {"types": {}, "secteurs": {}}})
+    active_secteur_filter = requested_secteur or (None if has_global_scope else user_secteur)
+
+    type_priority = {
+        "Participant": 0,
+        "Projet": 1,
+        "Subvention": 2,
+        "Atelier": 3,
+        "Partenaire": 4,
+    }
+    type_aliases = {
+        "participant": "Participant",
+        "participants": "Participant",
+        "projet": "Projet",
+        "projets": "Projet",
+        "subvention": "Subvention",
+        "subventions": "Subvention",
+        "atelier": "Atelier",
+        "ateliers": "Atelier",
+        "partenaire": "Partenaire",
+        "partenaires": "Partenaire",
+    }
+    wanted_type = type_aliases.get(type_filter or "", None)
+    dialect_name = ((db.session.bind.dialect.name if db.session.bind else "") or "").lower()
+
+    def _all_tokens_filter(*columns):
+        clauses = []
+        for token in tokens:
+            like_token = f"%{token}%"
+            if dialect_name == "postgresql":
+                per_token = [db.func.coalesce(col, "").ilike(like_token) for col in columns]
+            else:
+                per_token = [db.func.lower(db.func.coalesce(col, "")).like(like_token) for col in columns]
+            clauses.append(db.or_(*per_token))
+        return db.and_(*clauses)
+
+    def _score_item(label: str | None, meta: str | None) -> int:
+        label_low = (label or "").strip().lower()
+        meta_low = (meta or "").strip().lower()
+        query_low = " ".join(tokens)
+        score = 0
+        for token in tokens:
+            if label_low == token:
+                score += 120
+            if label_low.startswith(token):
+                score += 45
+            if f" {token}" in label_low:
+                score += 18
+            if token in label_low:
+                score += 25
+            if token in meta_low:
+                score += 8
+        if label_low and query_low:
+            similarity = SequenceMatcher(a=label_low, b=query_low).ratio()
+            score += int(similarity * 40)
+        return score
+
+    if (wanted_type in {None, "Participant"}) and (can("participants:view") or can("participants:view_all")):
+        participants_q = Participant.query.filter(
+            _all_tokens_filter(
+                Participant.nom,
+                Participant.prenom,
+                Participant.email,
+                Participant.telephone,
+                Participant.ville,
+            )
+        )
+        if active_secteur_filter:
+            has_presence_in_user_secteur = (
+                db.session.query(PresenceActivite.id)
+                .join(SessionActivite, SessionActivite.id == PresenceActivite.session_id)
+                .filter(PresenceActivite.participant_id == Participant.id)
+                .filter(SessionActivite.secteur == active_secteur_filter)
+                .exists()
+            )
+            participants_q = participants_q.filter(
+                db.or_(
+                    Participant.created_secteur == active_secteur_filter,
+                    has_presence_in_user_secteur,
+                )
+            )
+        rows = participants_q.order_by(Participant.updated_at.desc(), Participant.nom.asc(), Participant.prenom.asc()).limit(per_type_limit).all()
+        for row in rows:
+            label = f"{(row.prenom or '').strip()} {(row.nom or '').strip()}".strip() or f"Participant #{row.id}"
+            meta = row.ville or row.email or "Fiche participant"
+            results.append({
+                "type": "Participant",
+                "label": label,
+                "meta": meta,
+                "secteur": row.created_secteur or "",
+                "url": url_for("participants.edit_participant", participant_id=row.id),
+                "score": _score_item(label, meta),
+            })
+
+    if (wanted_type in {None, "Projet"}) and can("projets:view"):
+        projets_q = Projet.query.filter(
+            _all_tokens_filter(Projet.nom, Projet.description, Projet.secteur)
+        )
+        if active_secteur_filter:
+            projets_q = projets_q.filter(Projet.secteur == active_secteur_filter)
+        rows = projets_q.order_by(Projet.created_at.desc(), Projet.nom.asc()).limit(per_type_limit).all()
+        for row in rows:
+            label = row.nom
+            meta = row.secteur or ""
+            results.append({
+                "type": "Projet",
+                "label": label,
+                "meta": meta,
+                "secteur": row.secteur or "",
+                "url": url_for("projets.projets_edit", projet_id=row.id),
+                "score": _score_item(label, meta),
+            })
+
+    if (wanted_type in {None, "Subvention"}) and can("subventions:view"):
+        subventions_q = Subvention.query.filter(
+            Subvention.est_archive.is_(False),
+            _all_tokens_filter(Subvention.nom, Subvention.secteur)
+        )
+        if active_secteur_filter:
+            subventions_q = subventions_q.filter(Subvention.secteur == active_secteur_filter)
+        rows = subventions_q.order_by(Subvention.annee_exercice.desc(), Subvention.created_at.desc(), Subvention.nom.asc()).limit(per_type_limit).all()
+        for row in rows:
+            label = row.nom
+            meta = f"{row.secteur} · {row.annee_exercice}"
+            results.append({
+                "type": "Subvention",
+                "label": label,
+                "meta": meta,
+                "secteur": row.secteur or "",
+                "url": url_for("main.subvention_pilotage", subvention_id=row.id),
+                "score": _score_item(label, meta),
+            })
+
+    if (wanted_type in {None, "Atelier"}) and can("emargement:view"):
+        ateliers_q = AtelierActivite.query.filter(
+            AtelierActivite.is_deleted.is_(False),
+            _all_tokens_filter(AtelierActivite.nom, AtelierActivite.description, AtelierActivite.secteur)
+        )
+        if active_secteur_filter:
+            ateliers_q = ateliers_q.filter(AtelierActivite.secteur == active_secteur_filter)
+        rows = ateliers_q.order_by(AtelierActivite.created_at.desc(), AtelierActivite.nom.asc()).limit(per_type_limit).all()
+        for row in rows:
+            label = row.nom
+            meta = row.secteur or ""
+            results.append({
+                "type": "Atelier",
+                "label": label,
+                "meta": meta,
+                "secteur": row.secteur or "",
+                "url": url_for("activite.sessions", atelier_id=row.id),
+                "score": _score_item(label, meta),
+            })
+
+    if (wanted_type in {None, "Partenaire"}) and can("partenaires:view"):
+        rows = (
+            Partenaire.query
+            .filter(
+                _all_tokens_filter(Partenaire.nom, Partenaire.email_contact, Partenaire.email_general)
+            )
+            .order_by(Partenaire.nom.asc())
+            .limit(per_type_limit)
+            .all()
+        )
+        for row in rows:
+            label = row.nom
+            meta = row.email_contact or row.email_general or ""
+            results.append({
+                "type": "Partenaire",
+                "label": label,
+                "meta": meta,
+                "secteur": "",
+                "url": url_for("partenaires.edit", partenaire_id=row.id),
+                "score": _score_item(label, meta),
+            })
+
+    results_sorted = sorted(
+        results,
+        key=lambda item: (
+            -int(item.get("score") or 0),
+            type_priority.get(item.get("type") or "", 99),
+            (item.get("label") or "").lower(),
+        ),
+    )
+    type_facets = {}
+    secteur_facets = {}
+    for row in results_sorted:
+        t = row.get("type") or "Autres"
+        type_facets[t] = int(type_facets.get(t, 0)) + 1
+        s = (row.get("secteur") or "").strip()
+        if s:
+            secteur_facets[s] = int(secteur_facets.get(s, 0)) + 1
+
+    trimmed = [{k: v for k, v in row.items() if k != "score"} for row in results_sorted[:20]]
+    duration_ms = int((perf_counter() - start_ts) * 1000)
+    current_app.logger.info(
+        "global_search q=%r type=%r secteur=%r tokens=%s count=%s duration_ms=%s db=%s",
+        term,
+        wanted_type,
+        active_secteur_filter,
+        tokens,
+        len(trimmed),
+        duration_ms,
+        dialect_name,
+    )
+    return jsonify({
+        "results": trimmed,
+        "query": term,
+        "debug": {"duration_ms": duration_ms},
+        "facets": {
+            "types": type_facets,
+            "secteurs": secteur_facets,
+        },
+    })
 
 
 # --------- Stats ---------
