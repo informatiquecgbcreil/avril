@@ -1,0 +1,151 @@
+{% extends 'layout.html' %}
+{% block body %}
+<div class="stack">
+  <div class="breadcrumb">
+    <span class="breadcrumb__item"><a href="{{ url_for('insertion.index') }}">Insertion</a></span>
+    <span class="breadcrumb__sep">›</span>
+    <span class="breadcrumb__item">{{ participant.nom }} {{ participant.prenom }}</span>
+  </div>
+
+  <div class="page-head" style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+    <div>
+      <h1 style="margin:0;">{{ participant.nom }} {{ participant.prenom }}</h1>
+      <p class="muted" style="margin:6px 0 0 0;">Fiche insertion dédiée. Les données affichées ici sont séparées du participant global.</p>
+    </div>
+    {% if can_edit %}
+    <div><a class="pill active" href="{{ url_for('insertion.participant_edit', participant_id=participant.id) }}">Modifier la fiche insertion</a></div>
+    {% endif %}
+  </div>
+
+  <div class="cards-grid cards-grid--2">
+    <div class="card">
+      <div class="section-title">Participant global</div>
+      <dl class="kv-list">
+        <div><dt>Ville</dt><dd>{{ participant.ville or '—' }}</dd></div>
+        <div><dt>Quartier</dt><dd>{{ participant.quartier.nom if participant.quartier else '—' }}</dd></div>
+        <div><dt>Email</dt><dd>{{ participant.email or '—' }}</dd></div>
+        <div><dt>Téléphone</dt><dd>{{ participant.telephone or '—' }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Profil insertion</div>
+      <dl class="kv-list">
+        <div><dt>Pays d’origine</dt><dd>{{ participant.insertion_profile.pays_origine if participant.insertion_profile and participant.insertion_profile.pays_origine else '—' }}</dd></div>
+        <div><dt>CIR obtenu</dt><dd>{% if participant.insertion_profile and participant.insertion_profile.cir_obtenu is sameas true %}Oui{% elif participant.insertion_profile and participant.insertion_profile.cir_obtenu is sameas false %}Non{% else %}Non renseigné{% endif %}</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Parcours insertion</div>
+    <div class="muted" style="margin-bottom:10px;">Un parcours décrit le cadre de suivi sur une période : dispositif, prescripteur, type de titre de séjour, entrée et sortie.</div>
+    {% if participant.insertion_parcours %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Dispositif</th>
+              <th>Prescripteur</th>
+              <th>Titre de séjour</th>
+              <th>Début titre</th>
+              <th>Expiration titre</th>
+              <th>Entrée</th>
+              <th>Sortie</th>
+              <th>Statut</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in parcours_rows %}
+            <tr>
+              <td>{{ row.dispositif.label if row.dispositif else '—' }}</td>
+              <td>{{ row.prescripteur.label if row.prescripteur else '—' }}</td>
+              <td>{{ row.titre_sejour_type.label if row.titre_sejour_type else '—' }}</td>
+              <td>{{ row.date_debut_titre_sejour or '—' }}</td>
+              <td>{{ row.date_expiration_titre_sejour or '—' }}</td>
+              <td>{{ row.date_entree or '—' }}</td>
+              <td>{{ row.date_sortie or '—' }}</td>
+              <td>{{ 'Actif' if row.is_active else 'Inactif' }}</td>
+              <td>{{ 'Legacy' if row.legacy_source else 'Module insertion' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Aucun parcours insertion n’est enregistré.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Positionnements linguistiques</div>
+    <div class="muted" style="margin-bottom:10px;">Le positionnement décrit le niveau constaté à un moment donné, avec ou sans diplôme.</div>
+    {% if participant.insertion_positionnements %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Niveau</th>
+              <th>Parcours</th>
+              <th>Commentaire</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in positionnement_rows %}
+            <tr>
+              <td>{{ row.date_positionnement or '—' }}</td>
+              <td>{{ positionnement_type_label(row.type_positionnement) }}</td>
+              <td>{{ row.niveau.label if row.niveau else '—' }}</td>
+              <td>{{ row.parcours.dispositif.label if row.parcours and row.parcours.dispositif else '—' }}</td>
+              <td>{{ row.commentaire or '—' }}</td>
+              <td>{{ 'Legacy' if row.legacy_source else 'Module insertion' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Aucun positionnement linguistique n’est enregistré.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Certifications linguistiques</div>
+    <div class="muted" style="margin-bottom:10px;">Une certification correspond à un diplôme réellement présenté ou obtenu.</div>
+    {% if participant.insertion_certifications %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Diplôme</th>
+              <th>Niveau</th>
+              <th>Date de passage</th>
+              <th>Résultat</th>
+              <th>Parcours</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in certification_rows %}
+            <tr>
+              <td>{{ row.diplome.label if row.diplome else '—' }}</td>
+              <td>{{ row.niveau.label if row.niveau else '—' }}</td>
+              <td>{{ row.date_passage or row.date_obtention or '—' }}</td>
+              <td>{{ certification_result_label(row.resultat) }}</td>
+              <td>{{ row.parcours.dispositif.label if row.parcours and row.parcours.dispositif else '—' }}</td>
+              <td>{{ 'Legacy' if row.legacy_source else 'Module insertion' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Aucune certification linguistique n’est enregistrée.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

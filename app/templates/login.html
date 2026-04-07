@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="grid two">
+  <div class="card">
+    <h1>Connexion</h1>
+    <p>Entrez vos identifiants.</p>
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row">
+        <div>
+          <label>Email</label>
+          <input name="email" id="loginEmail" type="email" autocomplete="username" required>
+        </div>
+        <div>
+          <label>Mot de passe</label>
+          <input name="password" id="loginPassword" type="password" autocomplete="current-password" required>
+          <div class="inline" style="margin-top:8px;">
+            <label style="margin:0;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="togglePassword" style="width:auto;"> Afficher le mot de passe
+            </label>
+            <span id="capsLockHint" class="muted" style="display:none;">Verr. Maj activé</span>
+          </div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ok" type="submit">Se connecter</button>
+    </form>
+    <div class="spacer"></div>
+    <a href="{{ url_for('auth.password_reset_request') }}">Mot de passe oublié ?</a>
+  </div>
+
+  <div class="card">
+    <h2>Besoin d’aide pour vous connecter ?</h2>
+    <p class="muted">Voici les étapes simples pour démarrer.</p>
+    <ol>
+      <li>Entrez votre email professionnel.</li>
+      <li>Ajoutez votre mot de passe.</li>
+      <li>Cliquez sur “Se connecter”.</li>
+    </ol>
+    <div class="spacer"></div>
+    <p class="muted">Un souci ? Contactez l’administrateur de votre structure.</p>
+  </div>
+</div>
+<script>
+  (function () {
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    const togglePassword = document.getElementById('togglePassword');
+    const capsLockHint = document.getElementById('capsLockHint');
+    const storageKey = 'avril.last_login_email';
+
+    if (emailInput) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved && !emailInput.value) emailInput.value = saved;
+      emailInput.form?.addEventListener('submit', function () {
+        localStorage.setItem(storageKey, emailInput.value || '');
+      });
+    }
+
+    if (togglePassword && passwordInput) {
+      togglePassword.addEventListener('change', function () {
+        passwordInput.type = togglePassword.checked ? 'text' : 'password';
+      });
+    }
+
+    if (passwordInput && capsLockHint) {
+      function updateCapsLock(ev) {
+        const on = !!(ev.getModifierState && ev.getModifierState('CapsLock'));
+        capsLockHint.style.display = on ? 'inline' : 'none';
+      }
+      passwordInput.addEventListener('keydown', updateCapsLock);
+      passwordInput.addEventListener('keyup', updateCapsLock);
+      passwordInput.addEventListener('blur', function () { capsLockHint.style.display = 'none'; });
+    }
+  })();
+</script>
+{% endblock %}
