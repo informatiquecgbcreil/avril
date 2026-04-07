@@ -1,0 +1,73 @@
+{% extends 'layout.html' %}
+{% block body %}
+<div class="stack">
+  <div class="page-head">
+    <h1 style="margin:0;">Insertion socioprofessionnelle</h1>
+    <p class="muted" style="margin:6px 0 0 0;">Module cloisonné pour les données insertion sensibles. Ce lot ajoute la gestion complète des référentiels dynamiques.</p>
+  </div>
+
+  <div class="ux-callout">
+    <div class="ux-callout__title">À savoir</div>
+    <div class="ux-callout__text">Les données insertion ne doivent plus être portées durablement par la fiche participant globale. Ce module affiche la nouvelle source dédiée et prépare les futurs écrans de saisie et d’export.</div>
+  </div>
+
+  <div class="cards-grid cards-grid--3">
+    <div class="card"><div class="kpi-label">Profils insertion</div><div class="kpi-value">{{ counts.profiles }}</div></div>
+    <div class="card"><div class="kpi-label">Parcours</div><div class="kpi-value">{{ counts.parcours }}</div></div>
+    <div class="card"><div class="kpi-label">Certifications</div><div class="kpi-value">{{ counts.certifications }}</div></div>
+    <div class="card"><div class="kpi-label">Dispositifs</div><div class="kpi-value">{{ counts.dispositifs }}</div></div>
+    <div class="card"><div class="kpi-label">Prescripteurs</div><div class="kpi-value">{{ counts.prescripteurs }}</div></div>
+    <div class="card"><div class="kpi-label">Référentiels restants</div><div class="kpi-value">{{ counts.titres + counts.diplomes + counts.niveaux }}</div></div>
+  </div>
+
+  <div class="card">
+    <form method="get" class="filters-grid" style="grid-template-columns:2fr auto auto;">
+      <div>
+        <label class="muted">Recherche</label>
+        <input class="in" type="text" name="q" value="{{ q }}" placeholder="Nom, prénom, ville">
+      </div>
+      <div style="display:flex;align-items:end;gap:8px;">
+        <button class="pill active" type="submit">Rechercher</button>
+        <a class="pill" href="{{ url_for('insertion.index') }}">Réinitialiser</a>
+      </div>
+      <div style="display:flex;align-items:end;justify-content:flex-end;">
+        {% if can_manage_refs %}<a class="pill active" href="{{ url_for('insertion.referentiels_overview') }}">Gérer les référentiels</a>{% else %}<a class="pill" href="{{ url_for('insertion.referentiels_overview') }}">Voir les référentiels</a>{% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-bottom:10px;">Participants avec données insertion</div>
+    {% if participants %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Participant</th>
+              <th>Ville</th>
+              <th>Pays d’origine</th>
+              <th>Parcours</th>
+              <th>Certifications</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in participants %}
+            <tr>
+              <td><strong>{{ p.nom }}</strong> {{ p.prenom }}</td>
+              <td>{{ p.ville or '—' }}</td>
+              <td>{{ p.insertion_profile.pays_origine if p.insertion_profile and p.insertion_profile.pays_origine else '—' }}</td>
+              <td>{{ p.insertion_parcours|length }}</td>
+              <td>{{ p.insertion_certifications|length }}</td>
+              <td style="text-align:right;"><a class="pill" href="{{ url_for('insertion.participant_detail', participant_id=p.id) }}">Ouvrir</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Aucune donnée insertion dédiée n’a encore été trouvée pour cette recherche.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
