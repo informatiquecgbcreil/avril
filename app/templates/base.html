@@ -52,6 +52,9 @@
       --option-text: var(--text);
 
       --focus: rgba(106,165,255,.35);
+      --font-size-base: 16px;
+      --font-size-muted: 14px;
+      --touch-target-min: 44px;
     }
 
     /* THEME CLAIR “FINANCE” */
@@ -88,7 +91,10 @@
       --option-bg: #ffffff;
       --option-text: var(--text);
 
-      --focus: rgba(29,78,216,.18);
+      --focus: rgba(29,78,216,.28);
+      --font-size-base: 16px;
+      --font-size-muted: 14px;
+      --touch-target-min: 44px;
     }
 
     /* =========================================================
@@ -98,9 +104,11 @@
 
     body{
       margin:0;
-      font-family: system-ui, "Segoe UI", Roboto, Arial;
+      font-family: "Atkinson Hyperlegible", "Arial", "Verdana", "Tahoma", system-ui, sans-serif;
       background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
       color: var(--text);
+      font-size: var(--font-size-base);
+      line-height: 1.5;
     }
 
     a{ color:inherit; text-decoration:none; }
@@ -114,6 +122,20 @@
     /* =========================================================
       TOP BAR / NAV
     ========================================================= */
+    .skip-link{
+      position:absolute;
+      left:10px;
+      top:-60px;
+      z-index:1000;
+      background: var(--surface-strong);
+      border:2px solid var(--accent);
+      border-radius:10px;
+      padding:10px 12px;
+      color:var(--text);
+      font-weight:700;
+    }
+    .skip-link:focus{ top:10px; }
+
     .topbar{
       position:sticky; top:0; z-index:10;
       background: color-mix(in srgb, var(--bg) 92%, transparent);
@@ -125,12 +147,15 @@
     .brand{ font-weight:900; letter-spacing:.3px; margin-right:10px; }
 
     .pill{
-      padding:8px 12px;
+      padding:10px 14px;
       border:1px solid var(--border-soft);
       border-radius:999px;
       background: color-mix(in srgb, var(--surface) 70%, transparent);
       cursor:pointer;
       user-select:none;
+      min-height: var(--touch-target-min);
+      display:inline-flex;
+      align-items:center;
       transition:border-color .15s ease, background .15s ease;
     }
 
@@ -138,6 +163,11 @@
     .pill.active{
       border-color: color-mix(in srgb, var(--accent) 60%, transparent);
       background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    }
+    .pill:focus-visible, .btn:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+      outline: 3px solid color-mix(in srgb, var(--accent) 82%, #ffffff);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px var(--focus);
     }
 
     .right{ margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -175,9 +205,9 @@
     h1{ margin:0 0 10px; font-size:28px; }
     h2{ margin:0 0 10px; font-size:20px; }
     h3{ margin:0 0 10px; font-size:16px; color:var(--muted); font-weight:700; }
-    p{ margin:6px 0; color:var(--muted); }
+    p{ margin:6px 0; color:var(--muted); font-size: var(--font-size-muted); line-height: 1.55; }
 
-    .muted{ color: var(--muted); }
+    .muted{ color: var(--muted); font-size: var(--font-size-muted); line-height: 1.5; }
     .spacer{ height:12px; }
     .inline{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 
@@ -221,11 +251,11 @@
 
     input:focus, select:focus, textarea:focus{
       border-color: color-mix(in srgb, var(--accent) 70%, transparent);
-      box-shadow: 0 0 0 3px var(--focus);
+      box-shadow: 0 0 0 4px var(--focus);
     }
 
-    label{ font-size:13px; color:var(--muted); display:block; margin-bottom:6px; }
-    .help{ color:var(--muted); font-size:12px; margin-top:4px; }
+    label{ font-size:14px; color:var(--muted); display:block; margin-bottom:6px; }
+    .help{ color:var(--muted); font-size:14px; margin-top:4px; }
 
     .row{ display:grid; gap:10px; grid-template-columns:1fr; }
     .row.two{ grid-template-columns:1fr; }
@@ -312,6 +342,7 @@
 </head>
 
   <body>
+  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   {% set ep = request.endpoint or '' %}
   {% set embed = request.args.get('embed') %}
   {% if not embed %}
@@ -385,7 +416,7 @@
   </div>
   {% endif %}
 
-  <div class="container">
+  <main id="main-content" class="container" tabindex="-1">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="stack flash-stack" data-enhance-flashes="1">
@@ -406,7 +437,7 @@
     {% endwith %}
 
     {% block body %}{% endblock %}
-  </div>
+  </main>
 
   <script>
   (function(){
