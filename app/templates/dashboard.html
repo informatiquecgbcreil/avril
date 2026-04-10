@@ -395,6 +395,17 @@
     return;
   }
 
+  function buildChartSummary(items, money=true){
+    if (!items || !items.length) return "Ce qu’il faut retenir : aucune donnée exploitable sur la période.";
+    const sorted = [...items].sort((a,b)=>Number(b.value||0)-Number(a.value||0));
+    const top = sorted[0];
+    const total = sorted.reduce((acc, item)=> acc + Number(item.value || 0), 0);
+    if (!top) return "Ce qu’il faut retenir : aucune donnée exploitable sur la période.";
+    const pct = total > 0 ? Math.round((Number(top.value || 0) / total) * 100) : 0;
+    const topValue = top.rawText || (money ? formatValue(top.value, true) : formatValue(top.value, false));
+    return `Ce qu’il faut retenir : ${top.label || 'poste principal'} est en tête avec ${topValue} (${pct}% du total).`;
+  }
+
   function setMeta(canvas, items, money=true) {
     const { meta } = getUi(canvas);
     if (!meta) return;
@@ -406,6 +417,16 @@
       el.innerHTML = `<strong>${item.label}</strong><span>${valueText}</span>`;
       meta.appendChild(el);
     });
+
+    let summary = meta.parentElement.querySelector(`.chart-summary[data-summary-for="${canvas.id}"]`);
+    if (!summary) {
+      summary = document.createElement('p');
+      summary.className = 'chart-summary muted';
+      summary.setAttribute('data-summary-for', canvas.id);
+      summary.setAttribute('role', 'note');
+      meta.insertAdjacentElement('afterend', summary);
+    }
+    summary.textContent = buildChartSummary(items, money);
   }
 
   function drawLegendItems(canvas, items, money=true, handlers={}, options={}) {
