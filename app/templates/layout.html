@@ -44,6 +44,9 @@
       --option-text: var(--text);
 
       --focus: rgba(106,165,255,.35);
+      --font-size-base: 16px;
+      --font-size-muted: 14px;
+      --touch-target-min: 44px;
     }
 
     html[data-theme="light"]{
@@ -78,16 +81,21 @@
       --option-bg: #ffffff;
       --option-text: var(--text);
 
-      --focus: rgba(29,78,216,.18);
+      --focus: rgba(29,78,216,.28);
+      --font-size-base: 16px;
+      --font-size-muted: 14px;
+      --touch-target-min: 44px;
     }
 
     *{ box-sizing:border-box; }
 
     body{
       margin:0;
-      font-family: system-ui, "Segoe UI", Roboto, Arial;
+      font-family: "Atkinson Hyperlegible", "Arial", "Verdana", "Tahoma", system-ui, sans-serif;
       background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
       color: var(--text);
+      font-size: var(--font-size-base);
+      line-height: 1.5;
     }
 
     a{ color:inherit; text-decoration:none; }
@@ -95,6 +103,20 @@
 
     .wrap{ max-width:1180px; margin:0 auto; padding:14px 16px; }
     .container{ max-width:1180px; margin:0 auto; padding:18px 16px 46px; }
+
+    .skip-link{
+      position:absolute;
+      left:10px;
+      top:-60px;
+      z-index:1000;
+      background: var(--surface-strong);
+      border:2px solid var(--accent);
+      border-radius:10px;
+      padding:10px 12px;
+      color:var(--text);
+      font-weight:700;
+    }
+    .skip-link:focus{ top:10px; }
 
     .topbar{
       position:sticky; top:0; z-index:10;
@@ -163,12 +185,15 @@
     }
 
     .pill{
-      padding:8px 12px;
+      padding:10px 14px;
       border:1px solid var(--border-soft);
       border-radius:999px;
       background: color-mix(in srgb, var(--surface) 70%, transparent);
       cursor:pointer;
       user-select:none;
+      min-height: var(--touch-target-min);
+      display:inline-flex;
+      align-items:center;
       transition:border-color .15s ease, background .15s ease;
     }
 
@@ -176,6 +201,11 @@
     .pill.active{
       border-color: color-mix(in srgb, var(--accent) 60%, transparent);
       background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    }
+    .pill:focus-visible, .btn:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+      outline: 3px solid color-mix(in srgb, var(--accent) 82%, #ffffff);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px var(--focus);
     }
 
     .right{ margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -405,7 +435,7 @@
       color:var(--muted);
       font-weight:700;
     }
-    .mode-switch .pill{ padding:6px 10px; }
+    .mode-switch .pill{ padding:10px 14px; min-height: var(--touch-target-min); }
     .easy-banner{
       margin:10px 0 0;
       border:1px solid var(--border-soft);
@@ -427,6 +457,7 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   {% set ep = request.endpoint or '' %}
   {% set embed = request.args.get('embed') %}
   {% set ui_mode = UI_MODE if UI_MODE is defined else 'simple' %}
@@ -439,145 +470,35 @@
         <div class="brand" style="display:flex;align-items:center;gap:8px;">{% if APP_LOGO_URL %}<img src="{{ APP_LOGO_URL }}" alt="Logo application" style="height:28px;width:28px;object-fit:contain;border-radius:6px;">{% endif %}<span>{{ APP_NAME }}</span></div>
 
         {% if current_user.is_authenticated %}
-          {% if ui_simplified %}
-            <div class="nav-quick">
-              <div class="nav-quick-label">Accès rapides</div>
-              {% if can('dashboard:view') %}<a class="pill {% if ep.startswith('main.dashboard') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Accueil</a>{% endif %}
-              {% if can('participants:view') or can('participants:view_all') %}<a class="pill {% if ep.startswith('participants.') %}active{% endif %}" href="{{ url_for('participants.list_participants') }}">Participants</a>{% endif %}
-              {% if can('emargement:view') %}<a class="pill {% if ep.startswith('activite.') or ep.startswith('kiosk.') %}active{% endif %}" href="{{ url_for('activite.index') }}">Présences</a>{% endif %}
-              {% if can('stats:view') %}<a class="pill {% if ep.startswith('main.stats_bilans') or ep.startswith('main.stats') or ep.startswith('main.bilan_global') %}active{% endif %}" href="{{ url_for('main.stats_bilans') }}">Bilans</a>{% endif %}
-              <details class="nav-more">
-                <summary class="pill">Autres pages</summary>
-                <div class="nav-more-panel">
-                  {% if can('dashboard:view') %}<a class="pill" href="{{ url_for('main.dashboard') }}">Tableau de bord</a>{% endif %}
-                  {% if can('subventions:view') %}<a class="pill {% if ep.startswith('main.subventions') %}active{% endif %}" href="{{ url_for('main.subventions_list') }}">Subventions</a>{% endif %}
-                  {% if can('depenses:view') %}<a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>{% endif %}
-                  {% if can('projets:view') %}<a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>{% endif %}
-                  {% if can('partenaires:view') %}<a class="pill {% if ep.startswith('partenaires.') %}active{% endif %}" href="{{ url_for('partenaires.index') }}">Partenaires</a>{% endif %}
-                  {% if can('quartiers:view') %}<a class="pill {% if ep.startswith('quartiers.') %}active{% endif %}" href="{{ url_for('quartiers.index') }}">Quartiers</a>{% endif %}
-                  {% if can('insertion:view') %}<a class="pill {% if ep.startswith('insertion.') %}active{% endif %}" href="{{ url_for('insertion.index') }}">Insertion</a>{% endif %}
-                  {% if can('statsimpact:view') or can('stats:view') %}<a class="pill {% if ep.startswith('statsimpact.') %}active{% endif %}" href="{{ url_for('statsimpact.dashboard') }}">Données ateliers</a>{% endif %}
-                  {% if can('pedagogie:view') %}<a class="pill {% if ep.startswith('pedagogie.') %}active{% endif %}" href="{{ url_for('pedagogie.referentiels_list') }}">Pédagogie</a>{% endif %}
-                  {% if can('questionnaires:view') %}<a class="pill {% if ep.startswith('questionnaires.') %}active{% endif %}" href="{{ url_for('questionnaires.index') }}">Questionnaires</a>{% endif %}
-                </div>
-              </details>
+          {% if can('dashboard:view') %}<a class="pill {% if ep.startswith('main.dashboard') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Accueil</a>{% endif %}
+          {% if can('participants:view') or can('participants:view_all') %}<a class="pill {% if ep.startswith('participants.') %}active{% endif %}" href="{{ url_for('participants.list_participants') }}">Participants</a>{% endif %}
+          {% if can('emargement:view') %}<a class="pill {% if ep.startswith('activite.') or ep.startswith('kiosk.') %}active{% endif %}" href="{{ url_for('activite.index') }}">Présences</a>{% endif %}
+          {% if can('depenses:view') %}<a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>{% endif %}
+          {% if can('stats:view') %}<a class="pill {% if ep.startswith('main.stats_bilans') or ep.startswith('main.stats') or ep.startswith('main.bilan_global') %}active{% endif %}" href="{{ url_for('main.stats_bilans') }}">Bilans</a>{% endif %}
+
+          <details class="nav-more">
+            <summary class="pill">Plus</summary>
+            <div class="nav-more-panel">
+              {% if can('subventions:view') %}<a class="pill {% if ep.startswith('main.subventions') %}active{% endif %}" href="{{ url_for('main.subventions_list') }}">Subventions</a>{% endif %}
+              {% if can('depenses:create') %}<a class="pill {% if ep.startswith('budget.depense_new') %}active{% endif %}" href="{{ url_for('budget.depense_new') }}">Nouvelle dépense</a>{% endif %}
+              {% if can('projets:view') %}<a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>{% endif %}
+              {% if can('partenaires:view') %}<a class="pill {% if ep.startswith('partenaires.') %}active{% endif %}" href="{{ url_for('partenaires.index') }}">Partenaires</a>{% endif %}
+              {% if can('quartiers:view') %}<a class="pill {% if ep.startswith('quartiers.') %}active{% endif %}" href="{{ url_for('quartiers.index') }}">Quartiers</a>{% endif %}
+              {% if can('insertion:view') %}<a class="pill {% if ep.startswith('insertion.') %}active{% endif %}" href="{{ url_for('insertion.index') }}">Insertion</a>{% endif %}
+              {% if can('statsimpact:view') or can('statsimpact:view_all') %}<a class="pill {% if ep.startswith('statsimpact.') %}active{% endif %}" href="{{ url_for('statsimpact.dashboard') }}">Données ateliers</a>{% endif %}
+              {% if can('pedagogie:view') %}<a class="pill {% if ep.startswith('pedagogie.referentiels_list') %}active{% endif %}" href="{{ url_for('pedagogie.referentiels_list') }}">Pédagogie (config)</a>{% endif %}
+              {% if can('pedagogie:view') %}<a class="pill {% if ep.startswith('pedagogie.suivi_pedagogique') %}active{% endif %}" href="{{ url_for('pedagogie.suivi_pedagogique') }}">Suivi pédagogique</a>{% endif %}
+              {% if can('bilans:view') %}<a class="pill {% if ep.startswith('bilans.') %}active{% endif %}" href="{{ url_for('bilans.bilans_lourds', year=2026) }}">Bilans lourds</a>{% endif %}
+              {% if can('questionnaires:view') %}<a class="pill {% if ep.startswith('questionnaires.') %}active{% endif %}" href="{{ url_for('questionnaires.index') }}">Questionnaires</a>{% endif %}
+              {% if can('inventaire:view') %}<a class="pill {% if ep.startswith('inventaire_materiel.') %}active{% endif %}" href="{{ url_for('inventaire_materiel.list_items') }}">Inventaire</a>{% endif %}
+              {% if can('controle:view') %}<a class="pill {% if ep.startswith('main.controle') %}active{% endif %}" href="{{ url_for('main.controle') }}">Contrôle</a>{% endif %}
+              {% if can('admin:users') %}<a class="pill {% if ep.startswith('admin.users') %}active{% endif %}" href="{{ url_for('admin.users') }}">Équipe</a>{% endif %}
+              {% if can('secteurs:edit') %}<a class="pill {% if ep.startswith('admin.secteurs') %}active{% endif %}" href="{{ safe_url_for('admin.secteurs') }}">Secteurs</a>{% endif %}
+              {% if can('admin:rbac') %}<a class="pill {% if ep.startswith('admin.droits') %}active{% endif %}" href="{{ url_for('admin.droits') }}">Droits</a>{% endif %}
+              {% if can('admin:rbac') %}<a class="pill {% if ep.startswith('admin.instance_settings') %}active{% endif %}" href="{{ url_for('admin.instance_settings') }}">Identité app</a>{% endif %}
+              {% if can('ateliers:sync') %}<a class="pill {% if request.endpoint == 'admin.import_excel' %}active{% endif %}" href="{{ url_for('admin.import_excel') }}">Import Excel</a>{% endif %}
             </div>
-          {% elif not current_user.has_role("admin_tech") %}
-
-            {# ----------------------------
-               MENU UTILISATEUR (RBAC)
-               - On cache ce que l'user n'a pas le droit de voir
-               - Le serveur reste la source de vérité (require_perm)
-            ---------------------------- #}
-
-            <div class="nav-group">
-              <div class="nav-group-title">Accueil</div>
-              {% if can('dashboard:view') %}
-                <a class="pill {% if ep.startswith('main.dashboard') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Tableau de bord</a>
-              {% endif %}
-            </div>
-
-            <div class="nav-group">
-              <div class="nav-group-title">Finance</div>
-              {% if can('subventions:view') %}
-                <a class="pill {% if ep.startswith('main.subventions') %}active{% endif %}" href="{{ url_for('main.subventions_list') }}">Subventions</a>
-              {% endif %}
-              {% if can('depenses:create') %}
-                <a class="pill {% if ep.startswith('budget.depense_new') %}active{% endif %}" href="{{ url_for('budget.depense_new') }}">Nouvelle dépense</a>
-              {% endif %}
-              {% if can('depenses:view') %}
-                <a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>
-              {% endif %}
-              {% if can('projets:view') %}
-                <a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>
-              {% endif %}
-            </div>
-
-            <div class="nav-group">
-              <div class="nav-group-title">Activité</div>
-              {% if can('emargement:view') %}
-                <a class="pill {% if ep.startswith('activite.') or ep.startswith('kiosk.') %}active{% endif %}" href="{{ url_for('activite.index') }}">Émargement</a>
-              {% endif %}
-              {% if can('statsimpact:view') or can('stats:view') %}
-                <a class="pill {% if ep.startswith('statsimpact.') %}active{% endif %}" href="{{ url_for('statsimpact.dashboard') }}">Données ateliers</a>
-              {% endif %}
-              {% if can('pedagogie:view') %}
-                <a class="pill {% if ep.startswith('pedagogie.') %}active{% endif %}" href="{{ url_for('pedagogie.referentiels_list') }}">Pédagogie</a>
-                <a class="pill {% if ep.startswith('pedagogie.suivi_pedagogique') %}active{% endif %}" href="{{ url_for('pedagogie.suivi_pedagogique') }}">Suivi pédagogique</a>
-              {% endif %}
-            </div>
-
-            <div class="nav-group">
-              <div class="nav-group-title">Public</div>
-              {% if can('participants:view') or can('participants:view_all') %}
-                <a class="pill {% if ep.startswith('participants.') %}active{% endif %}" href="{{ url_for('participants.list_participants') }}">Participants</a>
-              {% endif %}
-              {% if can('insertion:view') %}
-                <a class="pill {% if ep.startswith('insertion.') %}active{% endif %}" href="{{ url_for('insertion.index') }}">Insertion</a>
-              {% endif %}
-              {% if can('quartiers:view') %}
-                <a class="pill {% if ep.startswith('quartiers.') %}active{% endif %}" href="{{ url_for('quartiers.index') }}">Quartiers</a>
-              {% endif %}
-            </div>
-
-            <details class="nav-group nav-more">
-              <summary class="pill">Plus</summary>
-              <div class="nav-more-panel">
-                {% if can('inventaire:view') %}
-                  <a class="pill {% if ep.startswith('inventaire_materiel.') %}active{% endif %}" href="{{ url_for('inventaire_materiel.list_items') }}">Inventaire</a>
-                {% endif %}
-                {% if can('stats:view') %}
-                  <a class="pill {% if ep.startswith('main.stats_bilans') or ep.startswith('main.bilan_global') or ep.startswith('main.stats') %}active{% endif %}" href="{{ url_for('main.stats_bilans') }}">Stats &amp; bilans</a>
-                {% endif %}
-                {% if can('bilans:view') %}
-                  <a class="pill {% if ep.startswith('bilans.') %}active{% endif %}" href="{{ url_for('bilans.bilans_lourds', year=2026) }}">Bilans lourds</a>
-                {% endif %}
-                {% if can('questionnaires:view') %}
-                  <a class="pill {% if ep.startswith('questionnaires.') %}active{% endif %}" href="{{ url_for('questionnaires.index') }}">Questionnaires d’impact</a>
-                {% endif %}
-                {% if can('partenaires:view') %}
-                  <a class="pill {% if ep.startswith('partenaires.') %}active{% endif %}" href="{{ url_for('partenaires.index') }}">Annuaire partenaires</a>
-                {% endif %}
-                {% if can('controle:view') %}
-                  <a class="pill {% if ep.startswith('main.controle') %}active{% endif %}" href="{{ url_for('main.controle') }}">Contrôle</a>
-                {% endif %}
-                {% if can('secteurs:edit') %}
-                  <a class="pill {% if ep.startswith('admin.secteurs') %}active{% endif %}" href="{{ safe_url_for('admin.secteurs') }}">Secteurs</a>
-                {% endif %}
-                {% if can('ateliers:sync') %}
-                  <a class="pill {% if request.endpoint == 'admin.import_excel' %}active{% endif %}" href="{{ url_for('admin.import_excel') }}">Import Excel ⬆️📄</a>
-                {% endif %}
-
-              </div>
-            </details>
-
-          {% else %}
-            {# MENU ADMIN TECH #}
-            <div class="nav-group">
-              <div class="nav-group-title">Accueil</div>
-              <a class="pill {% if ep.startswith('main.dashboard') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Tableau de bord</a>
-            </div>
-            <div class="nav-group">
-              <div class="nav-group-title">Administration</div>
-              <a class="pill {% if ep.startswith('admin.users') %}active{% endif %}" href="{{ url_for('admin.users') }}">Équipe</a>
-              {% if can('admin:rbac') %}
-                <a class="pill {% if ep.startswith('admin.droits') %}active{% endif %}" href="{{ url_for('admin.droits') }}">Droits</a>
-              <a class="dropdown-item" href="{{ url_for('admin.referentiels') }}">Référentiels</a>
-
-                <a class="pill {% if ep.startswith('admin.instance_settings') %}active{% endif %}" href="{{ url_for('admin.instance_settings') }}">Identité app</a>
-              {% endif %}
-              {% if can('secteurs:edit') %}
-                <a class="pill {% if ep.startswith('admin.secteurs') %}active{% endif %}" href="{{ safe_url_for('admin.secteurs') }}">Secteurs</a>
-              {% endif %}
-              {% if can('quartiers:view') %}
-                <a class="pill {% if ep.startswith('quartiers.') %}active{% endif %}" href="{{ url_for('quartiers.index') }}">Quartiers</a>
-              {% endif %}
-              {% if can('questionnaires:view') %}
-                <a class="pill {% if ep.startswith('questionnaires.') %}active{% endif %}" href="{{ url_for('questionnaires.index') }}">Questionnaires</a>
-              {% endif %}
-              <a class="pill {% if ep.startswith('main.controle') %}active{% endif %}" href="{{ url_for('main.controle') }}">Contrôle</a>
-            </div>
-          {% endif %}
+          </details>
 
           <div class="right">
             <div class="global-search">
@@ -619,7 +540,7 @@
   </div>
   {% endif %}
 
-  <div class="container">
+  <main id="main-content" class="container" tabindex="-1">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="stack flash-stack">
@@ -711,7 +632,7 @@
     {% endif %}
 
     {% block body %}{% endblock %}
-  </div>
+  </main>
 
   <script>
   (function(){
