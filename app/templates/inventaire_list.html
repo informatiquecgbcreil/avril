@@ -104,6 +104,28 @@
           </tbody>
         </table>
       </div>
+      <div class="responsive-card-list" aria-label="Liste inventaire (vue compacte)">
+        {% for it in items %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ it.designation }}</strong>
+              <span class="chip">{{ it.id_interne or ('#' ~ it.id) }}</span>
+            </header>
+            <dl class="responsive-card__grid">
+              <div><dt>Secteur / catégorie</dt><dd>{{ it.secteur }}<br><span class="muted">{{ it.categorie or "—" }}</span></dd></div>
+              <div><dt>Qté / état</dt><dd>{{ it.quantite }}<br><span class="badge">{{ it.etat }}</span></dd></div>
+              <div><dt>Localisation</dt><dd>{{ it.localisation or "—" }}</dd></div>
+              <div><dt>Valeur</dt><dd>{% if it.valeur_unitaire is not none %}{{ "%.2f"|format(it.valeur_unitaire) }} €{% else %}—{% endif %}</dd></div>
+              <div><dt>Lien dépense</dt><dd>{% if it.depense_id %}<a href="{{ url_for('budget.depense_edit', depense_id=it.depense_id) }}">Dépense #{{ it.depense_id }}</a>{% else %}<span class="muted">—</span>{% endif %}</dd></div>
+            </dl>
+            <div class="inline-actions">
+              <a class="btn" href="{{ url_for('inventaire_materiel.edit_item', item_id=it.id) }}">Ouvrir</a>
+            </div>
+          </article>
+        {% else %}
+          <div class="quick-empty"><strong>Aucune entrée inventaire.</strong>Ajoutez du matériel pour démarrer le suivi.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 {% endblock %}

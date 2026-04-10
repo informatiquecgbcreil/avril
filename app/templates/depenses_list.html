@@ -74,7 +74,7 @@
     <h2>Liste des dépenses</h2>
     <p class="muted">Ouvrez une dépense pour la modifier ou gérer ses justificatifs.</p>
 
-    <div class="tablewrap">
+    <div class="tablewrap clean">
       <table class="js-sortable">
         <thead>
           <tr>
@@ -115,6 +115,36 @@
           {% endif %}
         </tbody>
       </table>
+    </div>
+    <div class="responsive-card-list" aria-label="Liste des dépenses (vue compacte)">
+      {% if deps and deps|length %}
+        {% for d in deps %}
+          {% set l = d.budget_source %}
+          {% set s = l.source_sub %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ d.libelle }}</strong>
+              <span class="chip">{{ "%.2f"|format(d.montant or 0) }}€</span>
+            </header>
+            <dl class="responsive-card__grid">
+              <div><dt>Subvention</dt><dd>{{ s.nom }}<br><span class="muted">{{ s.secteur }} · {{ s.annee_exercice }}</span></dd></div>
+              <div><dt>Ligne budgétaire</dt><dd>{{ l.compte }} · <span class="muted">{{ l.libelle }}</span></dd></div>
+              <div><dt>Date / type</dt><dd>{{ d.date_paiement or "—" }}<br><span class="muted">{{ d.type_depense or "—" }}</span></dd></div>
+            </dl>
+            <div class="inline-actions">
+              <a class="btn" href="{{ url_for('budget.depense_edit', depense_id=d.id) }}">Modifier</a>
+              {% if can("depenses:delete") %}
+                <form method="POST" action="{{ url_for('budget.depense_delete', depense_id=d.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn danger" type="submit" onclick="return confirm('Supprimer cette dépense ? Cette action est irréversible.');">Supprimer</button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <div class="quick-empty"><strong>Aucune dépense ne correspond aux filtres sélectionnés.</strong>Modifiez les filtres ou créez une nouvelle dépense.</div>
+      {% endif %}
     </div>
   </div>
 </div>

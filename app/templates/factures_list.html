@@ -50,6 +50,27 @@
           </tbody>
         </table>
       </div>
+      <div class="responsive-card-list" aria-label="Liste des factures (vue compacte)">
+        {% for f in factures %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ f.fournisseur or "Fournisseur non renseigné" }}</strong>
+              <span class="chip">{{ "%.2f"|format(f.total or 0) }} €</span>
+            </header>
+            <dl class="responsive-card__grid">
+              <div><dt>Date</dt><dd>{{ f.date_facture or "—" }}</dd></div>
+              <div><dt>Secteur</dt><dd>{{ f.secteur_principal }}</dd></div>
+              <div><dt>Référence</dt><dd class="muted">{{ f.reference_facture or "—" }}</dd></div>
+              <div><dt>Statut</dt><dd><span class="status-badge js-auto-status">{{ 'validée' if f.statut == 'valide' else 'brouillon' }}</span></dd></div>
+            </dl>
+            <div class="inline-actions">
+              <a class="btn" href="{{ url_for('inventaire.facture_detail', facture_id=f.id) }}#top">Ouvrir</a>
+            </div>
+          </article>
+        {% else %}
+          <div class="quick-empty"><strong>Aucune facture</strong>Ajoute ta première facture pour lancer la chaîne dépenses / inventaire.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 {% endblock %}
