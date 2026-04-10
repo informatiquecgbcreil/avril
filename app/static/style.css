@@ -835,6 +835,42 @@ table.js-sortable th:hover {
   color: var(--muted);
   text-align:center;
 }
+
+/* ---------- LOT 1.2 : listes/tableaux en cartes (mobile/tablette) ---------- */
+.responsive-card-list{display:none; gap:12px; margin-top:12px;}
+.responsive-card{
+  border:1px solid var(--line);
+  background:var(--card);
+  border-radius:14px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.responsive-card__head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.responsive-card__grid{
+  margin:0;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:8px 12px;
+}
+.responsive-card__grid dt{font-size:12px; color:var(--muted); margin:0 0 2px;}
+.responsive-card__grid dd{margin:0;}
+
+body[data-device-mode="mobile"] .tablewrap.clean > table,
+body[data-device-mode="tablet"] .tablewrap.clean > table{
+  display:none;
+}
+body[data-device-mode="mobile"] .responsive-card-list,
+body[data-device-mode="tablet"] .responsive-card-list{
+  display:grid;
+}
 .passport-page .skill-dist {
   display:grid;
   grid-template-columns: repeat(4, minmax(0,1fr));
