@@ -178,6 +178,15 @@
       gap:8px;
       z-index:20;
     }
+    .nav-more-section-title{
+      width:100%;
+      font-size:11px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      color:var(--muted);
+      padding:4px 2px 0;
+    }
 
     .nav-more-panel .pill{
       width:100%;
@@ -479,19 +488,24 @@
           <details class="nav-more">
             <summary class="pill">Plus</summary>
             <div class="nav-more-panel">
+              <div class="nav-more-section-title">Quotidien</div>
               {% if can('subventions:view') %}<a class="pill {% if ep.startswith('main.subventions') %}active{% endif %}" href="{{ url_for('main.subventions_list') }}">Subventions</a>{% endif %}
-              {% if can('depenses:create') %}<a class="pill {% if ep.startswith('budget.depense_new') %}active{% endif %}" href="{{ url_for('budget.depense_new') }}">Nouvelle dépense</a>{% endif %}
               {% if can('projets:view') %}<a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>{% endif %}
               {% if can('partenaires:view') %}<a class="pill {% if ep.startswith('partenaires.') %}active{% endif %}" href="{{ url_for('partenaires.index') }}">Partenaires</a>{% endif %}
               {% if can('quartiers:view') %}<a class="pill {% if ep.startswith('quartiers.') %}active{% endif %}" href="{{ url_for('quartiers.index') }}">Quartiers</a>{% endif %}
               {% if can('insertion:view') %}<a class="pill {% if ep.startswith('insertion.') %}active{% endif %}" href="{{ url_for('insertion.index') }}">Insertion</a>{% endif %}
               {% if can('statsimpact:view') or can('statsimpact:view_all') %}<a class="pill {% if ep.startswith('statsimpact.') %}active{% endif %}" href="{{ url_for('statsimpact.dashboard') }}">Données ateliers</a>{% endif %}
+
+              <div class="nav-more-section-title">Ponctuel</div>
+              {% if can('depenses:create') %}<a class="pill {% if ep.startswith('budget.depense_new') %}active{% endif %}" href="{{ url_for('budget.depense_new') }}">Nouvelle dépense</a>{% endif %}
               {% if can('pedagogie:view') %}<a class="pill {% if ep.startswith('pedagogie.referentiels_list') %}active{% endif %}" href="{{ url_for('pedagogie.referentiels_list') }}">Pédagogie (config)</a>{% endif %}
               {% if can('pedagogie:view') %}<a class="pill {% if ep.startswith('pedagogie.suivi_pedagogique') %}active{% endif %}" href="{{ url_for('pedagogie.suivi_pedagogique') }}">Suivi pédagogique</a>{% endif %}
               {% if can('bilans:view') %}<a class="pill {% if ep.startswith('bilans.') %}active{% endif %}" href="{{ url_for('bilans.bilans_lourds', year=2026) }}">Bilans lourds</a>{% endif %}
               {% if can('questionnaires:view') %}<a class="pill {% if ep.startswith('questionnaires.') %}active{% endif %}" href="{{ url_for('questionnaires.index') }}">Questionnaires</a>{% endif %}
               {% if can('inventaire:view') %}<a class="pill {% if ep.startswith('inventaire_materiel.') %}active{% endif %}" href="{{ url_for('inventaire_materiel.list_items') }}">Inventaire</a>{% endif %}
               {% if can('controle:view') %}<a class="pill {% if ep.startswith('main.controle') %}active{% endif %}" href="{{ url_for('main.controle') }}">Contrôle</a>{% endif %}
+
+              <div class="nav-more-section-title">Administration</div>
               {% if can('admin:users') %}<a class="pill {% if ep.startswith('admin.users') %}active{% endif %}" href="{{ url_for('admin.users') }}">Équipe</a>{% endif %}
               {% if can('secteurs:edit') %}<a class="pill {% if ep.startswith('admin.secteurs') %}active{% endif %}" href="{{ safe_url_for('admin.secteurs') }}">Secteurs</a>{% endif %}
               {% if can('admin:rbac') %}<a class="pill {% if ep.startswith('admin.droits') %}active{% endif %}" href="{{ url_for('admin.droits') }}">Droits</a>{% endif %}
