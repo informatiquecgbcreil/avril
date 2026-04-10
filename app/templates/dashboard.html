@@ -18,6 +18,40 @@
     height:190px !important;
   }
   .chart-shell--tall canvas{height:230px !important;}
+  body[data-device-mode="mobile"] .dashboard-toolbar{
+    justify-content:stretch;
+    align-items:stretch;
+  }
+  body[data-device-mode="mobile"] .dashboard-toolbar > .btn,
+  body[data-device-mode="mobile"] .dashboard-toolbar form,
+  body[data-device-mode="mobile"] .dashboard-toolbar form .btn{
+    width:100%;
+  }
+  body[data-device-mode="mobile"] .dashboard-toolbar form{
+    display:grid;
+    gap:8px;
+  }
+  body[data-device-mode="mobile"] .budget-year-input{
+    width:100% !important;
+  }
+  body[data-device-mode="mobile"] .chart-shell{
+    min-height:170px;
+    height:170px;
+  }
+  body[data-device-mode="mobile"] .chart-shell canvas{
+    height:170px !important;
+  }
+  body[data-device-mode="mobile"] .chart-shell--tall{
+    min-height:200px;
+    height:200px;
+  }
+  body[data-device-mode="mobile"] .chart-shell--tall canvas{
+    height:200px !important;
+  }
+  body[data-device-mode="tablet"] .chart-shell{
+    min-height:180px;
+    height:180px;
+  }
 </style>
 
 <div class="stack">
@@ -34,7 +68,7 @@
         <a class="btn {% if period_key == 'year' %}is-active{% endif %}" href="{{ url_for('main.dashboard', period='year', budget_year=budget_year) }}">Année</a>
         <form method="get" action="{{ url_for('main.dashboard') }}" class="inline-actions" data-filter-summary="true">
           <input type="hidden" name="period" value="{{ period_key or '90' }}">
-          <label class="field-stack slim"><span>Exercice</span><input class="in" id="budget_year" name="budget_year" type="number" value="{{ budget_year }}" min="2000" max="2100" style="width:110px;"></label>
+          <label class="field-stack slim"><span>Exercice</span><input class="in budget-year-input" id="budget_year" name="budget_year" type="number" value="{{ budget_year }}" min="2000" max="2100" style="width:110px;"></label>
           <button class="btn" type="submit">Mettre à jour</button>
         </form>
       </div>

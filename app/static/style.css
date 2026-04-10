@@ -694,6 +694,34 @@ html[data-theme="dark"] .page-hero,html[data-theme="dark"] .hero-card,html[data-
 .wide-shell{width:min(100%,1380px);}
 .statsimpact-matrix-wrap{max-height:520px;}
 
+/* ---------- 11) LOT 1.1 responsive (mobile/tablette) ---------- */
+@media (max-width: 900px){
+  .inline,
+  .inline-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .inline .btn,
+  .inline-actions .btn,
+  .form-actions .btn{
+    width:100%;
+    justify-content:center;
+    text-align:center;
+  }
+  .card{
+    padding:12px;
+  }
+  .tablewrap{
+    border-radius:10px;
+  }
+}
+
+body[data-device-mode="mobile"] input,
+body[data-device-mode="mobile"] select,
+body[data-device-mode="mobile"] textarea{
+  font-size:16px;
+}
+
 
 /* Phase C practical dense lists/forms */
 .long-form-shell,
