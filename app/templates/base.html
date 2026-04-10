@@ -374,16 +374,23 @@
       min-width:44px;
       font-weight:700;
     }
+    body[data-device-mode="mobile"] .nav{ gap:6px; }
+    body[data-device-mode="mobile"] .right{ width:100%; justify-content:flex-start; }
+    body[data-device-mode="mobile"] .nav-more-panel{ position:fixed; left:10px; right:10px; top:76px; min-width:0; }
+    body[data-device-mode="kiosk"]{ font-size:18px; }
+    body[data-device-mode="kiosk"] .pill,
+    body[data-device-mode="kiosk"] .btn{ min-height:56px; font-size:18px; padding:12px 18px; }
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 
-  <body>
+  <body data-device-mode="{{ UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' }}" class="mode-{{ UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' }}">
   <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   {% set ep = request.endpoint or '' %}
   {% set embed = request.args.get('embed') %}
   {% set ui_mode = UI_MODE if UI_MODE is defined else 'simple' %}
   {% set ui_simplified = UI_SIMPLIFIED if UI_SIMPLIFIED is defined else true %}
+  {% set ui_device_mode = UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' %}
   {% if not embed %}
   <div class="topbar">
     <div class="wrap">
@@ -437,6 +444,14 @@
               <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
               <button class="pill {% if ui_simplified %}active{% endif %}" type="submit" name="mode" value="simple">Simple</button>
               <button class="pill {% if not ui_simplified %}active{% endif %}" type="submit" name="mode" value="expert">Expert</button>
+            </form>
+            <form method="post" action="{{ url_for('main.set_ui_device_mode') }}" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+              <button class="pill {% if ui_device_mode == 'desktop' %}active{% endif %}" type="submit" name="device_mode" value="desktop">Ordinateur</button>
+              <button class="pill {% if ui_device_mode == 'mobile' %}active{% endif %}" type="submit" name="device_mode" value="mobile">Mobile</button>
+              <button class="pill {% if ui_device_mode == 'tablet' %}active{% endif %}" type="submit" name="device_mode" value="tablet">Tablette</button>
+              <button class="pill {% if ui_device_mode == 'kiosk' %}active{% endif %}" type="submit" name="device_mode" value="kiosk">Borne</button>
             </form>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
 

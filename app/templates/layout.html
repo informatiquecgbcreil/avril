@@ -196,22 +196,6 @@
       margin-top:0;
       padding-top:2px;
     }
-    .nav-more-section-title{
-      width:100%;
-      font-size:11px;
-      font-weight:800;
-      text-transform:uppercase;
-      letter-spacing:.4px;
-      color:var(--muted);
-      padding:8px 2px 0;
-      margin-top:6px;
-      border-top:1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    }
-    .nav-more-section-title:first-child{
-      border-top:none;
-      margin-top:0;
-      padding-top:2px;
-    }
 
     .nav-more-panel .pill{
       width:100%;
@@ -489,17 +473,26 @@
     .easy-banner__text{ color:var(--muted); font-size:13px; }
     .context-banner--simple{ gap:6px; }
     .context-banner--simple .context-badge{ font-size:11px; }
+    body[data-device-mode="mobile"] .nav{ gap:6px; }
+    body[data-device-mode="mobile"] .right{ width:100%; justify-content:flex-start; }
+    body[data-device-mode="mobile"] .global-search{ width:100%; max-width:none; min-width:0; }
+    body[data-device-mode="mobile"] .nav-more-panel{ position:fixed; left:10px; right:10px; top:76px; min-width:0; }
+    body[data-device-mode="tablet"] .global-search{ min-width:160px; width:240px; }
+    body[data-device-mode="kiosk"]{ font-size:18px; }
+    body[data-device-mode="kiosk"] .pill,
+    body[data-device-mode="kiosk"] .btn{ min-height:56px; font-size:18px; padding:12px 18px; }
 
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 
-<body>
+<body data-device-mode="{{ UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' }}" class="mode-{{ UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' }}">
   <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   {% set ep = request.endpoint or '' %}
   {% set embed = request.args.get('embed') %}
   {% set ui_mode = UI_MODE if UI_MODE is defined else 'simple' %}
   {% set ui_simplified = UI_SIMPLIFIED if UI_SIMPLIFIED is defined else true %}
+  {% set ui_device_mode = UI_DEVICE_MODE if UI_DEVICE_MODE is defined else 'desktop' %}
 
   {% if not embed %}
   <div class="topbar">
@@ -567,6 +560,15 @@
               <span class="mode-switch__label">Affichage</span>
               <button class="pill {% if ui_simplified %}active{% endif %}" type="submit" name="mode" value="simple">Simple</button>
               <button class="pill {% if not ui_simplified %}active{% endif %}" type="submit" name="mode" value="expert">Expert</button>
+            </form>
+            <form method="post" action="{{ url_for('main.set_ui_device_mode') }}" class="mode-switch">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+              <span class="mode-switch__label">Écran</span>
+              <button class="pill {% if ui_device_mode == 'desktop' %}active{% endif %}" type="submit" name="device_mode" value="desktop">Ordinateur</button>
+              <button class="pill {% if ui_device_mode == 'mobile' %}active{% endif %}" type="submit" name="device_mode" value="mobile">Mobile</button>
+              <button class="pill {% if ui_device_mode == 'tablet' %}active{% endif %}" type="submit" name="device_mode" value="tablet">Tablette</button>
+              <button class="pill {% if ui_device_mode == 'kiosk' %}active{% endif %}" type="submit" name="device_mode" value="kiosk">Borne</button>
             </form>
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
 
