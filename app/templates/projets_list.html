@@ -60,6 +60,32 @@
         </tbody>
       </table>
     </div>
+    <div class="responsive-card-list" aria-label="Liste des projets (vue compacte)">
+      {% for p in projets %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ p.nom }}</strong>
+            <span class="chip">{{ p.secteur }}</span>
+          </header>
+          <p class="muted">{{ (p.description or "")[:120] }}{% if (p.description or "")|length > 120 %}…{% endif %}</p>
+          <dl class="responsive-card__grid">
+            <div><dt>Compte-rendu</dt><dd>{{ 'Oui' if p.cr_filename else 'Non' }}</dd></div>
+            <div><dt>Demandé / Accordé</dt><dd>{{ "%.2f"|format(p.total_demande or 0) }}€<br><span class="muted">{{ "%.2f"|format(p.total_attribue or 0) }}€</span></dd></div>
+            <div><dt>Reçu / Engagé</dt><dd>{{ "%.2f"|format(p.total_recu or 0) }}€<br><span class="muted">{{ "%.2f"|format(p.total_engage or 0) }}€</span></dd></div>
+            <div><dt>Reste</dt><dd><strong>{{ "%.2f"|format(p.total_reste or 0) }}€</strong></dd></div>
+          </dl>
+          <div class="inline-actions">
+            <a class="btn" href="{{ url_for('projets.projets_edit', projet_id=p.id) }}">Voir le projet</a>
+            <form method="post" action="{{ url_for('projets.projets_delete', projet_id=p.id) }}" onsubmit="return confirm('Supprimer définitivement ce projet ? Cette action est irréversible.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn danger" type="submit">Supprimer</button>
+            </form>
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucun projet n’est encore enregistré.</strong>Créez un projet pour suivre ses financeurs, son compte-rendu et ses dépenses.</div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 {% endblock %}
