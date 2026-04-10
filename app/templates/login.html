@@ -1,5 +1,14 @@
 {% extends "layout.html" %}
 {% block body %}
+<style>
+  body[data-device-mode="mobile"] .form-actions .btn{
+    width:100%;
+    justify-content:center;
+  }
+  body[data-device-mode="mobile"] ol{
+    padding-left:18px;
+  }
+</style>
 <div class="grid two">
   <div class="card">
     <h1 style="margin-top:0;">Connexion</h1>

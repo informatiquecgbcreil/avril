@@ -112,6 +112,31 @@
         </tbody>
       </table>
     </div>
+    <div class="responsive-card-list" aria-label="Liste des subventions (vue compacte)">
+      {% for s in subs %}
+        {% set pct = ((s.montant_recu or 0) / (s.montant_attribue or 0) * 100) if (s.montant_attribue or 0) else 0 %}
+        <article class="responsive-card subvFilterItem" data-search="{{ (s.nom ~ ' ' ~ s.secteur ~ ' ' ~ s.annee_exercice)|lower }}" data-year="{{ s.annee_exercice }}" data-secteur="{{ s.secteur }}">
+          <header class="responsive-card__head">
+            <strong>{{ s.nom }}</strong>
+            <span class="chip">{{ s.annee_exercice }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Secteur</dt><dd>{{ s.secteur }}</dd></div>
+            <div><dt>Demandé</dt><dd>{{ "%.2f"|format(s.montant_demande or 0) }}€</dd></div>
+            <div><dt>Attribué</dt><dd>{{ "%.2f"|format(s.montant_attribue or 0) }}€</dd></div>
+            <div><dt>Reçu</dt><dd><strong>{{ "%.2f"|format(s.montant_recu or 0) }}€</strong></dd></div>
+          </dl>
+          <div class="progress-shell"><div class="progress-fill {{ 'is-ok' if pct >= 80 else ('is-warn' if pct >= 30 else 'is-danger') }}" style="width:{{ pct }}%;">{{ "%.0f"|format(pct) }}%</div></div>
+          <div class="inline-actions">
+            <span class="status-badge {{ 'status-success' if pct >= 80 else ('status-warning' if pct >= 30 else 'status-danger') }}">{{ "%.0f"|format(pct) }}% reçu</span>
+            <a class="btn" href="{{ url_for('main.subvention_pilotage', subvention_id=s.id) }}">Ouvrir</a>
+            <a class="btn" href="{{ url_for('main.subvention_bilan', subvention_id=s.id) }}">Bilan</a>
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucune subvention n’est enregistrée pour le moment.</strong>Créez une subvention pour démarrer le suivi financier.</div>
+      {% endfor %}
+    </div>
     <div class="callout-soft" id="subvNoResult" style="display:none;">Aucun dossier ne correspond aux filtres sélectionnés.</div>
   </section>
 </div>
@@ -122,16 +147,18 @@
     const y = document.getElementById('subvYear');
     const s = document.getElementById('subvSect');
     const rows = Array.from(document.querySelectorAll('.subvRow'));
+    const cards = Array.from(document.querySelectorAll('.subvFilterItem'));
+    const items = rows.concat(cards);
     const no = document.getElementById('subvNoResult');
     function apply(){
       const needle = (q.value || '').trim().toLowerCase();
       const year = (y.value || '').trim();
       const sect = (s.value || '').trim().toLowerCase();
       let visible = 0;
-      rows.forEach(r => {
-        const hay = r.getAttribute('data-search') || '';
+      items.forEach(r => {
+        const hay = (r.getAttribute('data-search') || '').toLowerCase();
         const ry = r.getAttribute('data-year') || '';
-        const rs = r.getAttribute('data-secteur') || '';
+        const rs = (r.getAttribute('data-secteur') || '').toLowerCase();
         const show = (!needle || hay.includes(needle)) && (!year || ry === year) && (!sect || rs.toLowerCase().includes(sect));
         r.style.display = show ? '' : 'none';
         if(show) visible++;

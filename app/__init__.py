@@ -147,6 +147,23 @@ def create_app():
                 pass
         if ui_mode not in {"simple", "expert"}:
             ui_mode = "simple"
+        valid_device_modes = {"desktop", "mobile", "tablet", "kiosk"}
+        requested_mode = (
+            (request.args.get("device_mode") or "").strip().lower()
+            or (session.get("ui_device_mode") or "").strip().lower()
+            or (request.cookies.get("ui_device_mode") or "").strip().lower()
+        )
+        if requested_mode not in valid_device_modes:
+            ua = (request.user_agent.string or "").lower()
+            if "ipad" in ua or "tablet" in ua:
+                requested_mode = "tablet"
+            elif any(token in ua for token in ["iphone", "android", "mobile"]):
+                requested_mode = "mobile"
+            else:
+                requested_mode = "desktop"
+        endpoint = (request.endpoint or "").lower()
+        if endpoint.startswith("kiosk."):
+            requested_mode = "kiosk"
         return {
             "APP_NAME": app_name,
             "ORGANIZATION_NAME": organization_name,
@@ -155,6 +172,7 @@ def create_app():
             "media_url": media_url,
             "UI_MODE": ui_mode,
             "UI_SIMPLIFIED": ui_mode == "simple",
+            "UI_DEVICE_MODE": requested_mode,
         }
 
     # ------------------------------------------------------------------

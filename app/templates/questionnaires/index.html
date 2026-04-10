@@ -92,6 +92,61 @@
         </tbody>
       </table>
     </div>
+    <div class="responsive-card-list" aria-label="Liste des questionnaires (vue compacte)">
+      {% for q in questionnaires %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ q.nom }}</strong>
+            <span class="chip">{% if q.is_active %}Actif{% else %}Inactif{% endif %}</span>
+          </header>
+          <p class="muted">{{ q.description or "—" }}</p>
+          <dl class="responsive-card__grid">
+            <div>
+              <dt>Secteurs</dt>
+              <dd class="muted">
+                {% if q.secteurs %}
+                  {{ q.secteurs | map(attribute='secteur') | join(', ') }}
+                {% else %}
+                  Tous
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt>Ateliers</dt>
+              <dd class="muted">
+                {% if q.ateliers %}
+                  {% set names = [] %}
+                  {% for link in q.ateliers %}
+                    {% if ateliers_map.get(link.atelier_id) %}
+                      {% set _ = names.append(ateliers_map.get(link.atelier_id)) %}
+                    {% endif %}
+                  {% endfor %}
+                  {{ names | join(', ') }}
+                {% else %}
+                  Tous
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+          <div class="inline-actions">
+            {% if can('questionnaires:edit') %}
+              <a class="btn" href="{{ url_for('questionnaires.edit', questionnaire_id=q.id) }}">✏️ Éditer</a>
+            {% endif %}
+            {% if can('questionnaires:export') %}
+              <a class="btn" href="{{ url_for('questionnaires.export_csv', questionnaire_id=q.id) }}">⬇️ Export</a>
+            {% endif %}
+            {% if can('questionnaires:delete') %}
+              <form method="post" action="{{ url_for('questionnaires.delete', questionnaire_id=q.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn danger" type="submit" onclick="return confirm('Supprimer ce questionnaire ?');">🗑️ Supprimer</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucun questionnaire trouvé.</strong>Créez un questionnaire pour démarrer les collectes d’impact.</div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 {% endblock %}
