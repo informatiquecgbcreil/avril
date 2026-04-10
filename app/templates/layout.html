@@ -185,7 +185,14 @@
       text-transform:uppercase;
       letter-spacing:.4px;
       color:var(--muted);
-      padding:4px 2px 0;
+      padding:8px 2px 0;
+      margin-top:6px;
+      border-top:1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    }
+    .nav-more-section-title:first-child{
+      border-top:none;
+      margin-top:0;
+      padding-top:2px;
     }
 
     .nav-more-panel .pill{
@@ -218,7 +225,7 @@
     }
 
     .right{ margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .global-search{ position:relative; min-width:280px; max-width:420px; width:min(40vw, 420px); }
+    .global-search{ position:relative; min-width:200px; max-width:360px; width:min(32vw, 360px); }
     .global-search input{
       width:100%;
       border:1px solid var(--input-border);
@@ -445,6 +452,10 @@
       font-weight:700;
     }
     .mode-switch .pill{ padding:10px 14px; min-height: var(--touch-target-min); }
+    @media (max-width: 1220px){
+      .global-search{ min-width:160px; width:220px; }
+      .mode-switch__label{ display:none; }
+    }
     .easy-banner{
       margin:10px 0 0;
       border:1px solid var(--border-soft);
@@ -482,13 +493,13 @@
           {% if can('dashboard:view') %}<a class="pill {% if ep.startswith('main.dashboard') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Accueil</a>{% endif %}
           {% if can('participants:view') or can('participants:view_all') %}<a class="pill {% if ep.startswith('participants.') %}active{% endif %}" href="{{ url_for('participants.list_participants') }}">Participants</a>{% endif %}
           {% if can('emargement:view') %}<a class="pill {% if ep.startswith('activite.') or ep.startswith('kiosk.') %}active{% endif %}" href="{{ url_for('activite.index') }}">Présences</a>{% endif %}
-          {% if can('depenses:view') %}<a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>{% endif %}
-          {% if can('stats:view') %}<a class="pill {% if ep.startswith('main.stats_bilans') or ep.startswith('main.stats') or ep.startswith('main.bilan_global') %}active{% endif %}" href="{{ url_for('main.stats_bilans') }}">Bilans</a>{% endif %}
 
           <details class="nav-more">
             <summary class="pill">Plus</summary>
             <div class="nav-more-panel">
               <div class="nav-more-section-title">Quotidien</div>
+              {% if can('depenses:view') %}<a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>{% endif %}
+              {% if can('stats:view') %}<a class="pill {% if ep.startswith('main.stats_bilans') or ep.startswith('main.stats') or ep.startswith('main.bilan_global') %}active{% endif %}" href="{{ url_for('main.stats_bilans') }}">Bilans</a>{% endif %}
               {% if can('subventions:view') %}<a class="pill {% if ep.startswith('main.subventions') %}active{% endif %}" href="{{ url_for('main.subventions_list') }}">Subventions</a>{% endif %}
               {% if can('projets:view') %}<a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>{% endif %}
               {% if can('partenaires:view') %}<a class="pill {% if ep.startswith('partenaires.') %}active{% endif %}" href="{{ url_for('partenaires.index') }}">Partenaires</a>{% endif %}
