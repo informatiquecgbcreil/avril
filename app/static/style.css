@@ -36,6 +36,9 @@
 
   /* Focus ring */
   --focus: rgba(106,165,255,.35);
+  --font-size-base: 16px;
+  --font-size-muted: 14px;
+  --touch-target-min: 44px;
 }
 
 /* ---------- 2) THEME LIGHT ---------- */
@@ -63,7 +66,10 @@ html[data-theme="light"]{
   --option-bg: #ffffff;
   --option-text: #0f172a;
 
-  --focus: rgba(37,99,235,.25);
+  --focus: rgba(37,99,235,.30);
+  --font-size-base: 16px;
+  --font-size-muted: 14px;
+  --touch-target-min: 44px;
 }
 
 /* ---------- 3) THEME DARK (optionnel explicite) ---------- */
@@ -76,9 +82,11 @@ html[data-theme="dark"]{
 
 body{
   margin:0;
-  font-family: system-ui, "Segoe UI", Roboto, Arial;
+  font-family: "Atkinson Hyperlegible", "Arial", "Verdana", "Tahoma", system-ui, sans-serif;
   background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.45)), var(--bg);
   color: var(--text);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
 }
 
 /* Liens */
@@ -103,7 +111,7 @@ h3{
   color:var(--muted);
   font-weight:700;
 }
-p{ margin:6px 0; color:var(--muted); }
+p{ margin:6px 0; color:var(--muted); font-size: var(--font-size-muted); line-height: 1.55; }
 
 /* ---------- 5) INPUTS / SELECTS / TEXTAREA (FIX GLOBAL) ---------- */
 input, select, textarea{
@@ -125,8 +133,13 @@ select optgroup{
 
 /* focus accessible */
 input:focus, select:focus, textarea:focus{
-  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
-  box-shadow: 0 0 0 3px var(--focus);
+  border-color: color-mix(in srgb, var(--accent) 75%, transparent);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+button:focus-visible, .btn:focus-visible, a:focus-visible, .pill:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--accent) 82%, #ffffff);
+  outline-offset: 2px;
 }
 
 /* placeholders (cohérents sur les 2 thèmes) */
@@ -144,6 +157,7 @@ input:focus, select:focus, textarea:focus{
   border-radius:12px;
   display:inline-block;
   font-weight:600;
+  min-height: var(--touch-target-min);
 }
 
 .btn:hover, button:hover{
@@ -192,7 +206,7 @@ th{
 }
 
 /* ---------- 8) UI HELPERS ---------- */
-.muted{ color: var(--muted); }
+.muted{ color: var(--muted); font-size: var(--font-size-muted); line-height: 1.5; }
 
 /* ---------- 8b) LAYOUT BASICS ---------- */
 .card{
@@ -234,11 +248,12 @@ th{
   align-items:center;
 }
 .theme-switch .pill{
-  padding:8px 12px;
+  padding:10px 14px;
   border:1px solid var(--border-soft);
   border-radius:999px;
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   cursor:pointer;
+  min-height: var(--touch-target-min);
 }
 .theme-switch .pill:hover{
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
@@ -528,7 +543,7 @@ tbody tr:hover{ background: color-mix(in srgb, var(--accent) 10%, var(--surface)
 .admin-table th,.admin-table td{padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left;}
 .admin-table th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:color-mix(in srgb,var(--surface-strong) 94%, transparent);position:sticky;top:0;z-index:1;}
 .admin-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface-soft) 70%, transparent);font-size:12px;color:var(--muted);}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface-soft) 70%, transparent);font-size:14px;color:var(--muted);min-height:var(--touch-target-min);}
 .rbac-form{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 .rbac-input,.rbac-select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);}
 .rbac-input.compact,.rbac-select.compact{max-width:220px;}
@@ -678,6 +693,34 @@ html[data-theme="dark"] .page-hero,html[data-theme="dark"] .hero-card,html[data-
 
 .wide-shell{width:min(100%,1380px);}
 .statsimpact-matrix-wrap{max-height:520px;}
+
+/* ---------- 11) LOT 1.1 responsive (mobile/tablette) ---------- */
+@media (max-width: 900px){
+  .inline,
+  .inline-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .inline .btn,
+  .inline-actions .btn,
+  .form-actions .btn{
+    width:100%;
+    justify-content:center;
+    text-align:center;
+  }
+  .card{
+    padding:12px;
+  }
+  .tablewrap{
+    border-radius:10px;
+  }
+}
+
+body[data-device-mode="mobile"] input,
+body[data-device-mode="mobile"] select,
+body[data-device-mode="mobile"] textarea{
+  font-size:16px;
+}
 
 
 /* Phase C practical dense lists/forms */

@@ -461,6 +461,20 @@ def set_ui_mode():
     return redirect(next_url)
 
 
+@bp.post("/ui-device-mode")
+@login_required
+def set_ui_device_mode():
+    mode = (request.form.get("device_mode") or "desktop").strip().lower()
+    if mode not in {"desktop", "mobile", "tablet", "kiosk"}:
+        mode = "desktop"
+    session["ui_device_mode"] = mode
+    flash(f"Mode d’écran activé : {mode}.", "success")
+    next_url = (request.form.get("next") or request.referrer or url_for("main.dashboard")).strip()
+    resp = redirect(next_url)
+    resp.set_cookie("ui_device_mode", mode, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return resp
+
+
 
 @bp.route("/dashboard/personnaliser", methods=["GET", "POST"])
 @login_required
