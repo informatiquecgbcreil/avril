@@ -24,7 +24,7 @@
 
     <div class="card">
       <h2 style="margin-top:0;">Historique</h2>
-      <div class="tablewrap">
+      <div class="tablewrap clean">
         <table>
           <thead>
             <tr>
@@ -92,6 +92,55 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Historique des sessions (vue compacte)">
+        {% for s, nb, cap, taux in sessions %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>
+              {% if s.session_type == 'COLLECTIF' %}
+                {{ s.date_session }} {{ s.heure_debut or '' }}{% if s.heure_fin %}-{{ s.heure_fin }}{% endif %}
+              {% else %}
+                {{ s.rdv_date }} {{ s.rdv_debut or '' }}{% if s.rdv_fin %}-{{ s.rdv_fin }}{% endif %}
+              {% endif %}
+            </strong>
+            <span class="chip">{{ s.session_type }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Présences</dt><dd>{{ nb }}</dd></div>
+            <div><dt>Capacité</dt><dd>{{ cap if s.session_type=='COLLECTIF' else '—' }}</dd></div>
+            <div><dt>Taux</dt><dd>{% if taux is not none %}<strong>{{ taux }}%</strong>{% else %}—{% endif %}</dd></div>
+          </dl>
+          <div class="inline-actions">
+            {% if not corbeille %}
+              <a class="btn" href="{{ url_for('activite.emargement', session_id=s.id) }}">Ouvrir</a>
+              <a class="btn" href="{{ url_for('activite.session_skills', session_id=s.id) }}">Compétences</a>
+              <a class="btn" href="{{ url_for('activite.session_edit_schedule', session_id=s.id) }}">Corriger date/heure</a>
+              {% if can('questionnaires:respond') %}
+                <a class="btn" href="{{ url_for('questionnaires.respond', session_id=s.id) }}">Questionnaire</a>
+              {% endif %}
+              {% if s.session_type=='COLLECTIF' %}
+                <a class="btn" href="{{ url_for('activite.generate_collectif', session_id=s.id) }}">Générer PDF</a>
+              {% endif %}
+              <form method="post" action="{{ url_for('activite.session_delete', session_id=s.id) }}" onsubmit="return confirm('Mettre cette session en corbeille ? (restaurable)');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn danger">Supprimer</button>
+              </form>
+            {% else %}
+              <form method="post" action="{{ url_for('activite.session_restore', session_id=s.id) }}" onsubmit="return confirm('Restaurer cette session ?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn">Restaurer</button>
+              </form>
+              <form method="post" action="{{ url_for('activite.session_purge', session_id=s.id) }}" onsubmit="return confirm('SUPPRESSION DÉFINITIVE ?\n\nCette action efface la session, ses émargements, signatures et archives.\nImpossible d\\'annuler.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn danger">Supprimer définitivement</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+        {% else %}
+          <div class="quick-empty"><strong>{{ 'Corbeille vide.' if corbeille else 'Aucune session/RDV.' }}</strong></div>
+        {% endfor %}
       </div>
 
       {% if atelier.type_atelier == 'INDIVIDUEL_MENSUEL' %}
