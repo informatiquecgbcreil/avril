@@ -37,7 +37,7 @@
 
     <div class="card">
       <h2 style="margin-top:0;">Historique des corrections</h2>
-      <div class="tablewrap">
+      <div class="tablewrap clean">
         <table>
           <thead>
             <tr>
@@ -62,6 +62,23 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Historique des corrections (vue compacte)">
+        {% for e in edits %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ e.edited_at }}</strong>
+              <span class="chip">{{ e.editor.nom if e.editor and e.editor.nom else (e.editor.email if e.editor else '—') }}</span>
+            </header>
+            <dl class="responsive-card__grid">
+              <div><dt>Avant</dt><dd>{{ e.old_date }} {{ e.old_start or '' }}{% if e.old_end %}-{{ e.old_end }}{% endif %}</dd></div>
+              <div><dt>Après</dt><dd>{{ e.new_date }} {{ e.new_start or '' }}{% if e.new_end %}-{{ e.new_end }}{% endif %}</dd></div>
+              <div><dt>Raison</dt><dd>{{ e.reason }}</dd></div>
+            </dl>
+          </article>
+        {% else %}
+          <div class="quick-empty"><strong>Aucune correction enregistrée.</strong></div>
+        {% endfor %}
       </div>
     </div>
   </div>

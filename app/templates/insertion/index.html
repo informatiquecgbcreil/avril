@@ -42,7 +42,7 @@
     <div class="section-title" style="margin-bottom:6px;">Résultats</div>
     <div class="muted" style="margin-bottom:10px;">Ouvre la fiche d'une personne pour voir son parcours, ses positionnements et ses certifications.</div>
     {% if participants %}
-      <div class="table-responsive">
+      <div class="tablewrap clean">
         <table class="table">
           <thead>
             <tr>
@@ -67,6 +67,24 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Résultats insertion (vue compacte)">
+        {% for p in participants %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ p.nom }} {{ p.prenom }}</strong>
+            <span class="chip">{{ p.ville or '—' }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Pays d'origine</dt><dd>{{ p.insertion_profile.pays_origine if p.insertion_profile and p.insertion_profile.pays_origine else '—' }}</dd></div>
+            <div><dt>Parcours</dt><dd>{{ p.insertion_parcours|length }}</dd></div>
+            <div><dt>Certifications</dt><dd>{{ p.insertion_certifications|length }}</dd></div>
+          </dl>
+          <div class="inline-actions">
+            <a class="pill" href="{{ url_for('insertion.participant_detail', participant_id=p.id) }}">Voir la fiche</a>
+          </div>
+        </article>
+        {% endfor %}
       </div>
     {% else %}
       <div class="empty-state">Aucune fiche insertion trouvée pour cette recherche.</div>

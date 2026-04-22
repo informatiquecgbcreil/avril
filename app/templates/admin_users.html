@@ -133,6 +133,37 @@
           </tbody>
         </table>
       </div>
+      <div class="responsive-card-list" aria-label="Liste des utilisateurs (vue compacte)">
+        {% for u in users %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ u.nom }}</strong>
+              <span class="chip">{{ u.secteur_assigne or "Sans secteur" }}</span>
+            </header>
+            <dl class="responsive-card__grid">
+              <div><dt>Email</dt><dd class="muted">{{ u.email }}</dd></div>
+              <div>
+                <dt>Rôle(s)</dt>
+                <dd>
+                  <div class="context-strip">
+                    {% for role in u.role_codes %}
+                      <span class="status-badge {{ 'status-danger' if role == 'admin_tech' else ('status-info' if role == 'responsable_secteur' else 'status-warning') }}">{{ role }}</span>
+                    {% endfor %}
+                  </div>
+                </dd>
+              </div>
+            </dl>
+            <div class="inline-actions">
+              <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn danger" type="submit" onclick="return confirm('Supprimer définitivement cet utilisateur ?')">Supprimer</button>
+              </form>
+            </div>
+          </article>
+        {% else %}
+          <div class="quick-empty"><strong>Aucun utilisateur.</strong>Créez le premier compte pour démarrer l’administration.</div>
+        {% endfor %}
+      </div>
     </div>
 
   </div>

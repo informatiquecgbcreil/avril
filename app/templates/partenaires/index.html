@@ -35,7 +35,7 @@
   </div>
 
   <div class="card">
-    <div class="tablewrap">
+    <div class="tablewrap clean">
       <table>
         <thead>
           <tr>
@@ -123,6 +123,39 @@
           {% endif %}
         </tbody>
       </table>
+    </div>
+    <div class="responsive-card-list" aria-label="Annuaire partenaires (vue compacte)">
+      {% for p in partenaires %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ p.nom }}</strong>
+            <span class="chip">{{ p.secteurs | map(attribute='secteur') | join(', ') if p.secteurs else "—" }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Contact</dt><dd class="muted">{{ (p.contact_prenom or "") ~ (" " if p.contact_prenom or p.contact_nom else "") ~ (p.contact_nom or "") or "—" }}</dd></div>
+            <div><dt>E-mails</dt><dd class="muted">{{ p.email_contact or "—" }}<br>{{ p.email_general or "—" }}</dd></div>
+            <div><dt>Téléphones</dt><dd class="muted">{{ p.tel_contact or "—" }}<br>{{ p.tel_general or "—" }}</dd></div>
+            <div><dt>Adresse</dt><dd class="muted">{{ p.adresse or "—" }}</dd></div>
+          </dl>
+          <details>
+            <summary class="muted" style="cursor:pointer;">Voir la description</summary>
+            <div class="muted">{{ p.description or "—" }}</div>
+          </details>
+          <div class="inline-actions">
+            {% if can('partenaires:edit') %}
+              <a class="btn" href="{{ url_for('partenaires.edit', partenaire_id=p.id) }}">Voir la fiche</a>
+            {% endif %}
+            {% if can('partenaires:delete') %}
+              <form method="post" action="{{ url_for('partenaires.delete', partenaire_id=p.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn danger" type="submit" onclick="return confirm('Supprimer ce partenaire ?');">🗑️ Supprimer</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucun partenaire trouvé.</strong>Ajoutez un partenaire pour constituer l’annuaire.</div>
+      {% endfor %}
     </div>
   </div>
 </div>

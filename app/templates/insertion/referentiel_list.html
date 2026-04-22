@@ -41,7 +41,7 @@
   <div class="card">
     <div class="section-title">Liste des valeurs</div>
     {% if rows %}
-      <div class="table-responsive">
+      <div class="tablewrap clean">
         <table class="table">
           <thead>
             <tr>
@@ -74,6 +74,31 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Valeurs du référentiel (vue compacte)">
+        {% for row in rows %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ row.label }}</strong>
+            <span class="chip">{{ row.sort_order }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Code</dt><dd>{{ row.code or '—' }}</dd></div>
+            <div><dt>Statut</dt><dd>{{ 'Actif' if row.is_active else 'Inactif' }}</dd></div>
+          </dl>
+          <div class="inline-actions">
+            {% if can_manage_refs %}
+            <a class="pill" href="{{ url_for('insertion.referentiel_edit', ref_type=ref_type, ref_id=row.id) }}">Modifier</a>
+            <form method="post" action="{{ url_for('insertion.referentiel_delete', ref_type=ref_type, ref_id=row.id) }}" onsubmit="return confirm('Supprimer cette valeur ?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="pill danger" type="submit">Supprimer</button>
+            </form>
+            {% else %}
+            <span class="muted">Lecture seule</span>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
       </div>
     {% else %}
       <div class="empty-state">Aucune valeur ne correspond aux filtres sélectionnés.</div>
