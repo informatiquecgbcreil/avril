@@ -36,7 +36,7 @@
   {% endif %}
 
   <div class="card">
-    <div class="tablewrap">
+    <div class="tablewrap clean">
       <table>
         <thead>
           <tr>
@@ -74,6 +74,33 @@
           {% endif %}
         </tbody>
       </table>
+    </div>
+    <div class="responsive-card-list" aria-label="Liste des quartiers (vue compacte)">
+      {% for q in quartiers %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ q.nom }}</strong>
+            <span class="chip">{{ q.ville }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>QPV</dt><dd>{% if q.is_qpv %}<span class="tag">QPV</span>{% else %}—{% endif %}</dd></div>
+            <div><dt>Description</dt><dd class="muted">{{ q.description or "—" }}</dd></div>
+          </dl>
+          <div class="inline-actions">
+            {% if can('quartiers:edit') %}
+              <a class="btn" href="{{ url_for('quartiers.edit', quartier_id=q.id) }}">Voir / modifier</a>
+            {% endif %}
+            {% if can('quartiers:delete') %}
+              <form method="post" action="{{ url_for('quartiers.delete', quartier_id=q.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn danger" type="submit" onclick="return confirm('Supprimer ce quartier ?');">🗑️ Supprimer</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucun quartier enregistré.</strong>Ajoutez une ville/quartier pour enrichir vos statistiques.</div>
+      {% endfor %}
     </div>
   </div>
 </div>

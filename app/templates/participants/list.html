@@ -163,6 +163,32 @@
         </tbody>
       </table>
     </div>
+    <div class="responsive-card-list" aria-label="Liste des participants (vue compacte)">
+      {% for item in items %}
+      <article class="responsive-card">
+        <header class="responsive-card__head">
+          <strong>{{ item.nom }} {{ item.prenom or '' }}</strong>
+          <span class="chip">{{ item.type_public or 'Public non renseigné' }}</span>
+        </header>
+        <dl class="responsive-card__grid">
+          <div><dt>Coordonnées</dt><dd>{{ item.email or '—' }}<br><span class="muted">{{ item.telephone or '—' }}</span></dd></div>
+          <div><dt>Ville / quartier</dt><dd>{{ item.ville or '—' }}<br><span class="muted">{{ item.quartier.nom if item.quartier else '—' }}</span></dd></div>
+          <div><dt>Présences</dt><dd>{% if item._presence_count is defined %}<strong>{{ item._presence_count }}</strong> visite(s){% else %}—{% endif %}</dd></div>
+        </dl>
+        <div class="inline-actions">
+          <a class="btn" href="{{ url_for('participants.edit_participant', participant_id=item.id) }}">Voir la fiche</a>
+          {% if can('participants:delete') %}
+          <form method="post" action="{{ url_for('participants.delete_participant', participant_id=item.id) }}" onsubmit="return confirm('Supprimer ce participant ? Cette action est irréversible.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger" type="submit">Supprimer</button>
+          </form>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="quick-empty"><strong>Aucun participant ne correspond aux filtres sélectionnés.</strong>Modifiez un critère ou réinitialisez les filtres pour élargir la recherche.</div>
+      {% endfor %}
+    </div>
   </div>
 
   {% if pagination and pagination.pages > 1 %}

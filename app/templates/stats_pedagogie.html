@@ -141,6 +141,19 @@
                     </tbody>
                   </table>
                 </div>
+                <div class="responsive-card-list" aria-label="Compétences acquises (vue compacte)">
+                  {% for row in group.rows %}
+                  <article class="responsive-card">
+                    <header class="responsive-card__head">
+                      <strong>{{ row.competence }}</strong>
+                      <span class="chip">{{ row.date or '—' }}</span>
+                    </header>
+                    <dl class="responsive-card__grid">
+                      <div><dt>Atelier</dt><dd class="muted">{{ row.atelier or '—' }}</dd></div>
+                    </dl>
+                  </article>
+                  {% endfor %}
+                </div>
               </article>
             {% else %}
               <div class="empty-state">Aucune compétence acquise pour le moment.</div>
@@ -176,6 +189,25 @@
               {% endfor %}
             </tbody>
           </table>
+        </div>
+        <div class="responsive-card-list" aria-label="Menu passeports (vue compacte)">
+          {% for p in participants_for_passport %}
+            <article class="responsive-card">
+              <header class="responsive-card__head">
+                <strong>{{ p.nom }} {{ p.prenom }}</strong>
+                <span class="chip">{{ p.ville or '—' }}</span>
+              </header>
+              <dl class="responsive-card__grid">
+                <div><dt>Email</dt><dd class="muted">{{ p.email or '—' }}</dd></div>
+              </dl>
+              <div class="inline-actions">
+                <a class="btn" href="{{ url_for('pedagogie.participant_passeport', participant_id=p.id) }}">Ouvrir passeport</a>
+                <a class="btn" href="{{ url_for('statsimpact.stats_pedagogie', tab='participant', participant_id=p.id) }}">Compétences acquises</a>
+              </div>
+            </article>
+          {% else %}
+            <div class="quick-empty"><strong>Aucun participant trouvé.</strong>Affinez la recherche puis relancez.</div>
+          {% endfor %}
         </div>
       </section>
     {% endif %}
