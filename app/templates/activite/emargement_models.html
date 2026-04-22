@@ -38,7 +38,7 @@
   <div class="card">
     <div class="section-title">Liste des modèles</div>
     {% if rows %}
-      <div class="table-responsive">
+      <div class="tablewrap clean">
         <table class="table">
           <thead>
             <tr>
@@ -78,6 +78,34 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Modèles d’émargement (vue compacte)">
+        {% for row in rows %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ row.label }}</strong>
+            <span class="chip">{{ row.sort_order }}</span>
+          </header>
+          <p class="muted">{{ row.description or '—' }}</p>
+          <dl class="responsive-card__grid">
+            <div><dt>Type</dt><dd>{{ 'Collectif' if row.session_family == 'COLLECTIF' else 'Individuel mensuel' }}</dd></div>
+            <div><dt>Secteur</dt><dd>{{ 'Tous secteurs' if row.secteur == global_scope else row.secteur }}</dd></div>
+            <div><dt>Moteur</dt><dd>{{ engine_registry[row.engine].label if engine_registry.get(row.engine) else row.engine }}</dd></div>
+            <div><dt>Statut</dt><dd>{{ 'Actif' if row.is_active else 'Inactif' }}</dd></div>
+          </dl>
+          <div class="inline-actions">
+            <a class="pill" href="{{ url_for('activite.emargement_model_edit', model_key=row.key) }}">Modifier</a>
+            {% if not row.is_builtin %}
+            <form method="post" action="{{ url_for('activite.emargement_model_delete', model_key=row.key) }}" onsubmit="return confirm('Supprimer ce modèle ?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="pill danger" type="submit">Supprimer</button>
+            </form>
+            {% else %}
+            <span class="muted">Modèle de base</span>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
       </div>
     {% else %}
       <div class="empty-state">Aucun modèle d’émargement n’est disponible pour ce périmètre.</div>
