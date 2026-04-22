@@ -48,6 +48,28 @@
               </tbody>
             </table>
           </div>
+          <div class="responsive-card-list" aria-label="Compétences session (vue compacte)">
+            {% for comp in current_merged %}
+              {% set is_direct = comp.id in current_direct_ids %}{% set is_inherited = comp.id in inherited_ids %}
+              <article class="responsive-card">
+                <header class="responsive-card__head">
+                  <strong>{{ comp.code }} · {{ comp.nom }}</strong>
+                  <span class="chip">{% if is_direct and is_inherited %}Direct + module{% elif is_direct %}Direct{% elif is_inherited %}Module{% else %}—{% endif %}</span>
+                </header>
+                <dl class="responsive-card__grid">
+                  <div><dt>Référentiel</dt><dd class="muted">{{ ref_map.get(comp.referentiel_id).nom if ref_map.get(comp.referentiel_id) else '—' }}</dd></div>
+                  <div><dt>Source module</dt><dd class="muted">{{ module_source_map.get(comp.id, [])|join(', ') or '—' }}</dd></div>
+                </dl>
+                <div class="inline-actions">
+                  {% if is_direct %}
+                    <form method="post" action="{{ url_for('activite.session_skill_remove', session_id=session.id, comp_id=comp.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn danger" type="submit">Retirer</button></form>
+                  {% else %}
+                    <span class="muted">Hérité</span>
+                  {% endif %}
+                </div>
+              </article>
+            {% endfor %}
+          </div>
         {% else %}<div class="empty-state">Aucune compétence liée à cette session pour le moment.</div>{% endif %}
       </section>
 
@@ -72,6 +94,20 @@
             <thead><tr><th>Référentiel</th><th>Code</th><th>Libellé</th><th>Modules source</th></tr></thead>
             <tbody>{% for comp in inherited_from_modules %}<tr><td class="muted">{{ ref_map.get(comp.referentiel_id).nom if ref_map.get(comp.referentiel_id) else '—' }}</td><td><strong>{{ comp.code }}</strong></td><td>{{ comp.nom }}</td><td class="muted">{{ module_source_map.get(comp.id, [])|join(', ') }}</td></tr>{% endfor %}</tbody>
           </table>
+        </div>
+        <div class="responsive-card-list" aria-label="Compétences héritées (vue compacte)">
+          {% for comp in inherited_from_modules %}
+            <article class="responsive-card">
+              <header class="responsive-card__head">
+                <strong>{{ comp.code }} · {{ comp.nom }}</strong>
+                <span class="chip">Module</span>
+              </header>
+              <dl class="responsive-card__grid">
+                <div><dt>Référentiel</dt><dd class="muted">{{ ref_map.get(comp.referentiel_id).nom if ref_map.get(comp.referentiel_id) else '—' }}</dd></div>
+                <div><dt>Modules source</dt><dd class="muted">{{ module_source_map.get(comp.id, [])|join(', ') }}</dd></div>
+              </dl>
+            </article>
+          {% endfor %}
         </div>
       </section>
     {% endif %}

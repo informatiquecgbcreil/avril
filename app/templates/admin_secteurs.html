@@ -32,7 +32,7 @@
 
     <div class="card">
       <h2>Secteurs existants</h2>
-      <div class="tablewrap">
+      <div class="tablewrap clean">
         <table>
           <thead>
             <tr>
@@ -69,6 +69,30 @@
             {% endif %}
           </tbody>
         </table>
+      </div>
+      <div class="responsive-card-list" aria-label="Secteurs existants (vue compacte)">
+        {% for s in secteurs %}
+          <article class="responsive-card">
+            <header class="responsive-card__head">
+              <strong>{{ s.label }}</strong>
+              <span class="chip">{{ "✅ Actif" if s.is_active else "⛔ Inactif" }}</span>
+            </header>
+            <dl class="responsive-card__grid"><div><dt>Code</dt><dd class="muted">{{ s.code }}</dd></div></dl>
+            <div class="inline-actions">
+              <form method="POST" action="{{ url_for('admin.secteur_rename', secteur_id=s.id) }}" class="inline-actions">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input name="label" value="{{ s.label }}">
+                <button class="btn" type="submit">Renommer</button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.secteur_toggle', secteur_id=s.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn {{ 'danger' if s.is_active else 'ok' }}" type="submit">{{ 'Désactiver' if s.is_active else 'Activer' }}</button>
+              </form>
+            </div>
+          </article>
+        {% else %}
+          <div class="quick-empty"><strong>Aucun secteur enregistré.</strong>Créez un secteur pour alimenter les formulaires.</div>
+        {% endfor %}
       </div>
     </div>
   </div>

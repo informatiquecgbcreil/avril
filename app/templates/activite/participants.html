@@ -106,6 +106,43 @@
         </tbody>
       </table>
     </div>
+    <div class="responsive-card-list" aria-label="Participants du secteur (vue compacte)">
+      {% for p in participants %}
+        {% set st = stats_map.get(p.id, {}) %}
+        <article class="responsive-card">
+          <header class="responsive-card__head">
+            <strong>{{ p.prenom }} {{ p.nom }}</strong>
+            <span class="chip">#{{ p.id }}</span>
+          </header>
+          <dl class="responsive-card__grid">
+            <div><dt>Coordonnées</dt><dd class="muted">{{ p.email or "—" }}<br>{{ p.telephone or "—" }}</dd></div>
+            <div><dt>Profil</dt><dd class="muted">{{ p.type_public or "—" }} · {{ p.genre or "—" }}</dd></div>
+            <div><dt>Visites</dt><dd><span class="status-badge {{ 'status-success' if st.get('visites', 0) > 0 else 'status-warning' }}">{{ st.get('visites', 0) }} visite(s)</span></dd></div>
+            <div><dt>Dernière visite</dt><dd class="muted">{% if st.get('last_seen') %}{{ st.get('last_seen').strftime('%d/%m/%Y') }}{% else %}—{% endif %}</dd></div>
+          </dl>
+          <div class="table-actions">
+            <a class="btn" href="{{ url_for('activite.participant_edit', participant_id=p.id) }}">Modifier</a>
+            <form method="post" action="{{ url_for('activite.participant_anonymize', participant_id=p.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn" type="submit" onclick="return confirm('Anonymiser ce participant ? Les statistiques seront conservées, mais les données identifiantes seront supprimées.');">Anonymiser</button>
+            </form>
+            <form method="post" action="{{ url_for('activite.participant_delete', participant_id=p.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn danger" type="submit" onclick="return confirm('Supprimer définitivement ce participant ? Cette action est irréversible et n’est possible que si la fiche n’est pas utilisée dans d’autres secteurs.');">Supprimer</button>
+            </form>
+            {% if is_admin_global %}
+            <form method="post" action="{{ url_for('activite.participant_anonymize', participant_id=p.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="strict" value="1">
+              <button class="btn warn" type="submit" onclick="return confirm('Appliquer une anonymisation renforcée ? Les données démographiques seront également supprimées.');">Anonymisation renforcée</button>
+            </form>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}
+        <div class="quick-empty"><strong>Aucun participant ne correspond à la recherche.</strong>Vérifiez l’orthographe ou réinitialisez la recherche.</div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 {% endblock %}

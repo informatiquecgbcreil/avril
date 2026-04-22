@@ -14,6 +14,11 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+Commande unique (Linux) :
+```bash
+./start_linux.sh
+```
+
 ## 3) Configuration
 1. Copier `.env.example` vers `.env`.
 2. Adapter au contexte de la structure:
@@ -22,6 +27,11 @@ python -m pip install -r requirements.txt
    - `SECRET_KEY` (forte, unique)
    - `DATABASE_URL` (PostgreSQL recommandé)
    - `ERP_PUBLIC_BASE_URL`
+
+3. Lancer le pré-contrôle de déployabilité:
+```bash
+python tools/preflight_deploy.py
+```
 
 ## 4) Démarrage
 Option simple:
@@ -42,6 +52,11 @@ Au premier lancement, l’application redirige automatiquement vers `/setup/` po
 - Ne jamais conserver la `SECRET_KEY` par défaut.
 - Exécuter derrière un reverse-proxy (Nginx/Caddy/IIS) en HTTPS.
 - Sauvegarder la base de données et le répertoire d’uploads régulièrement.
+- Valider systématiquement `python tools/preflight_deploy.py` avant mise en service.
+- Exécuter un smoke test applicatif:
+```bash
+python tools/run_reliability_checks.py
+```
 
 ## 6) Stratégie de distribution recommandée
 - **Multi-instance** uniquement: **1 base par association** (aucune mutualisation des données).

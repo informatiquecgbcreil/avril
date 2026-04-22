@@ -11,4 +11,4 @@ docxtpl==0.16.8
 segno==1.6.1
 Flask-Migrate==4.0.7
 alembic==1.13.2
-psycopg2-binary
+psycopg2-binary==2.9.9

@@ -12,6 +12,7 @@ Ce kit permet de déployer l'application sans support développeur.
 ### Étapes
 1. Copier l'application dans `/opt/app-gestion`.
 2. Copier `.env.example` en `.env` et renseigner les variables.
+   - Vérifier la config: `python tools/preflight_deploy.py`
 3. Créer l'utilisateur système `appgestion`.
 4. Installer le service systemd:
    ```bash
@@ -23,6 +24,10 @@ Ce kit permet de déployer l'application sans support développeur.
 6. Activer la sauvegarde quotidienne:
    ```bash
    sudo crontab -u appgestion deploy/linux/cron/backup.cron
+   ```
+7. Vérifier la fiabilité applicative:
+   ```bash
+   python tools/run_reliability_checks.py
    ```
 
 ## 2) Windows
@@ -41,6 +46,11 @@ Ce kit permet de déployer l'application sans support développeur.
 4. Planifier la sauvegarde quotidienne:
    ```powershell
    .\deploy\windows\register_backup_task.ps1 -AppDir "C:\AppGestion" -At "02:30"
+   ```
+5. Vérifier la config et le smoke test:
+   ```powershell
+   python tools/preflight_deploy.py
+   python tools/run_reliability_checks.py
    ```
 
 ## 3) Contrôles d'exploitation
