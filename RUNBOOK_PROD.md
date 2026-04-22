@@ -6,6 +6,8 @@
 - [ ] PostgreSQL recommandé (ou SQLite pour petite structure)
 - [ ] Sauvegarde testée
 - [ ] HTTPS en frontal (Nginx/Caddy/IIS)
+- [ ] `python tools/preflight_deploy.py` = OK
+- [ ] `python tools/run_reliability_checks.py` = OK
 
 ## Sauvegarder maintenant
 ### Windows
